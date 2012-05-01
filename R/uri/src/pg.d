@@ -1,0 +1,1 @@
+pg.o: pg.cpp
