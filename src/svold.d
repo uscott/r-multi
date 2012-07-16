@@ -1,1 +1,0 @@
-svold.o: svold.c

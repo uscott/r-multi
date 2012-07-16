@@ -1,1 +1,0 @@
-temp.o: temp.cpp

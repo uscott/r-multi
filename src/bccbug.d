@@ -1,1 +1,0 @@
-bccbug.o: bccbug.c
