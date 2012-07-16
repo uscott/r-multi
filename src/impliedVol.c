@@ -253,7 +253,7 @@ SEXP imp_vol(SEXP tau, SEXP S, SEXP K,
 
     impvol0(REAL(tau)[i] / 365.0, 
             REAL(S)[i], REAL(K)[i], REAL(mprice)[i],
-            REAL(r)[i], REAL(q)[i], *CHAR(GET_ELT(op_type, i)),
+            REAL(r)[i], REAL(q)[i], *CHAR( STRING_ELT(op_type, i)),  /* *CHAR(GET_ELT(op_type, i)),*/
             asReal(tol), asInteger(maxit), REAL(ans) + i);
 
   }

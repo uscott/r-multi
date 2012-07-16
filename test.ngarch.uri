@@ -29,12 +29,20 @@ tmp1 = fitNgarch11(x, stopLag=50,maxit = 5e3, tol = 1e-3, fitInit=T, option=list
 tmp1 = fitNgarch11(x, init = tmp1$par, pop=10,
   stopLag=1,minit = 100, maxit = 5e3, fitInit=T,opt=list(grad=T))
 
+modInfo = tmp1
+modInfo$freq = 1
 
-tmp2 = wfitNgarch11(x, minit=100, pop=10,maxit = 5e3, tol = 1e-3,
-  fitInit=T, option=list(grad=T))
+exDts = c( "2012-08-01", "2012-09-01" )
 
-tmp2 = wfitNgarch11(x, init=tmp2$par, minit=100, pop=10,maxit = 5e2, tol = 1e-3,
-  fitInit=T, option=list(grad=T))
+prcs = ngarch11prices( exDts, modInfo )
+
+vols = ngarch11vols( prcs, S0=100,strikes=c(90,95,100,105,110))
+
+#tmp2 = wfitNgarch11(x, minit=100, pop=10,maxit = 5e3, tol = 1e-3,
+#  fitInit=T, option=list(grad=T))
+
+#tmp2 = wfitNgarch11(x, init=tmp2$par, minit=100, pop=10,maxit = 5e2, tol = 1e-3,
+#  fitInit=T, option=list(grad=T))
 
 
 
