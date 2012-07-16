@@ -12,7 +12,7 @@ lambda = 0.05
 a0 = 2.5e-5
 a1 = 0.06
 b1 = 0.85
-gamma = 0.98
+gamma = 0*0.98
 
 pars = c(lambda, a0, a1, b1, gamma)
 
