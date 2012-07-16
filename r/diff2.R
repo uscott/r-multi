@@ -1,7 +1,7 @@
 
 diff2 = function(x) {
 
-  require(ts)
+  #require(ts)
 
   c(NA, diff(x))
   

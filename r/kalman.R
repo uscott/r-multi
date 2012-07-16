@@ -10,7 +10,7 @@ kalman1 = function(y, Htr, f, Q, R, x = NULL, Atr = NULL)
   ## Based on treatment of KF in Hamilton.
 {
 
-  .Call("kalman1", y, Htr, f, Q, R, x, Atr, PACKAGE = "kalman.uri")
+  .Call("kalman1", y, Htr, f, Q, R, x, Atr ) #, PACKAGE = "kalman.uri")
   
 }
 
@@ -58,7 +58,7 @@ kal1.eval = function(y, a0, a1, b1, gamma, phi, c0, sigma, rho)
 
   par = c(a0, a1, b1, gamma, phi, c0, sigma, rho)
 
-  .Call("kal1", y, par, PACKAGE = "kalman.uri")
+  .Call("kal1", y, par ) #, PACKAGE = "kalman.uri")
 
 }
 
