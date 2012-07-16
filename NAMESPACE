@@ -1,0 +1,8 @@
+useDynLib(uri)
+
+# Import package dependencies
+
+
+# Export all names
+export( simNgarch11 )
+export( fitNgarch11 )
