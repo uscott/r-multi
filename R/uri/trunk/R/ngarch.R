@@ -24,6 +24,26 @@ fitNgarch11 = function(x, init = NULL, popSize = 5,
         PACKAGE = "uri")
 }
 
+## modInfo should correspond to the return value of fitNgarch11
+
+bootfitNgarch11 = function( modInfo, numBoots = 20, popSize = 5,
+  stopLags = 5, minit = 5, maxit = 100,
+  tol = 1e-5, fitInit = FALSE, option = NULL )
+  {
+    z = modInfo$res
+    len = length( modInfo$res )
+    pars = modInfo$par[1:5,1]
+    
+    for ( i in 1:numBoots )
+      {
+        indices = sample( 1:len, len, rep = TRUE )
+        x = simNgarch11( len, paths = 1, pars, x0 = NULL, h0 = NULL,
+          z = z[ indices ] )$x
+        modInfo2 = fitNgarch11( x, init = pars, popSize = popSize,
+          stopLags = stopLags, minit = minit, maxit = maxit, tol = tol,
+          fitInit = fitInit, option = option )
+      }
+  }
 
 
 wfitNgarch11 = function(x, init = NULL, popSize = 5,
@@ -38,14 +58,10 @@ wfitNgarch11 = function(x, init = NULL, popSize = 5,
 
 
 
-
 simNgarch11 = function(n, paths = 1, pars, x0 = NULL, h0 = NULL, z = NULL)
 {
   .Call("sim_ngarch11", n, paths, pars, x0, h0, z, PACKAGE = "uri")
 }
-
-
-
 
 
 
@@ -264,7 +280,7 @@ ngarch11vols = function(distInfo,  S0 =  1, strikes)
   else if (!is.null(rownames(K)))
     exp.names = rownames(K)
   else
-    exp.names = paste("expiration.date", seq(m))
+    exp.names = paste("expiration.date", seq(m), sep = "" )
 
   strike.names = paste(K, optTypes, sep = "")
   dim(strike.names) = dim(K)

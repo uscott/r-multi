@@ -24,19 +24,35 @@ x = tmp$x[,1]
 
 
 
-tmp1 = fitNgarch11(x, stopLag=50,maxit = 5e3, tol = 1e-3, fitInit=T, option=list(grad=T))
+tmp1 = fitNgarch11(x, stopLag=50,maxit = 5e3, tol = 1e-3, fitInit=TRUE, option=list(grad=T))
 
 tmp1 = fitNgarch11(x, init = tmp1$par, pop=10,
-  stopLag=1,minit = 100, maxit = 5e3, fitInit=T,opt=list(grad=T))
+  stopLag=1,minit = 100, maxit = 5e3, fitInit=T,opt=list(grad=TRUE))
 
 modInfo = tmp1
 modInfo$freq = 1
+
+if ( TRUE )
+  {
+    modInfo$par["lambda",1] = 0
+    modInfo$par["a0",1] = 0.30^2 / 365
+    modInfo$par["a1",1] = 0
+    modInfo$par["b1",1] = 0
+    modInfo$par["gamma",1] = 0
+    modInfo$par["h1",1] = 0.30^2 / 365
+  }
 
 exDts = c( "2012-08-01", "2012-09-01" )
 
 prcs = ngarch11prices( exDts, modInfo )
 
-vols = ngarch11vols( prcs, S0=100,strikes=c(90,95,100,105,110))
+vols1 = ngarch11vols( prcs, S0=100,strikes=c(90,95,100,105,110))
+
+modInfo = tmp1
+modInfo$freq = 1
+
+prcs = ngarch11prices( exDts, modInfo )
+vols2 = ngarch11vols( prcs, S0=100,strikes=c(90,95,100,105,110))
 
 #tmp2 = wfitNgarch11(x, minit=100, pop=10,maxit = 5e3, tol = 1e-3,
 #  fitInit=T, option=list(grad=T))
