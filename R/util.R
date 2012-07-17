@@ -253,7 +253,7 @@ read.yahoo = function(file)
     ans = read.csv(file, as.is = TRUE, comment.char = "")
     
     names(ans) = tolower(names(ans))
-    ans$date   = as.char(strptime(ans$date, format = "%d-%b-%y"))
+    ans$date   = as.character(strptime(ans$date, format = "%m/%d/%y"))
 
     ix  = sort(posixToChron(ans$date), index = TRUE)$ix
     ans = ans[ix, ]
