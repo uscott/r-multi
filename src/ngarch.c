@@ -27,170 +27,149 @@
 static void ng11(const long T, const double *x, const double *par,
                  int llonly, double *h, double *z, double *ll)
 
-  /********************************************************************
-   *
-   *   Description: Evaluation of loglikelihood, conditional variance
-   *    and residuals for the given time series x[0], ..., x[T - 1]
-   *    and the given coefficients par[0], ..., par[NUM_NG11_PAR-1].
-   *
-   ********************************************************************/
-
+/********************************************************************
+ *
+ *   Description: Evaluation of loglikelihood, conditional variance
+ *    and residuals for the given time series x[0], ..., x[T - 1]
+ *    and the given coefficients par[0], ..., par[NUM_NG11_PAR-1].
+ *
+ ********************************************************************/
 {
-  int inc = 0;
+    int inc = 0;
 
-  const double *Lh = NULL;
-  double const *xT = x + T;
-  double a[1] = {0.0};
-  double b[1] = {0.0};
-  double lam, a0, a1, b1, gam, h1;
-  int ok;
+    const double *Lh = NULL;
+    double const *xT = x + T;
+    double a[1] = {0.0};
+    double b[1] = {0.0};
+    double lam, a0, a1, b1, gam, h1;
+    int ok;
 
-  inc = !(llonly = llonly || !h || !z);
+    inc = !(llonly = llonly || !h || !z);
 
-  llonly ? h = (double *) a, z = (double *) b : 0;
+    llonly ? h = (double *) a, z = (double *) b : 0;
 
-  ok = x && par && ll;
+    ok = x && par && ll;
 
-  if (!ok)
-    error ("null pointer passed where not allowed");
+    if (!ok)
+        error ("null pointer passed where not allowed");
 
-  lam = par[LAMBDA_INDEX];
-  a0 = par[A0_INDEX];
-  a1 = par[A1_INDEX];
-  b1 = par[B1_INDEX];
-  gam = par[GAMMA_INDEX];
-  h1 = par[H1_INDEX];
+    lam = par[LAMBDA_INDEX];
+    a0 = par[A0_INDEX];
+    a1 = par[A1_INDEX];
+    b1 = par[B1_INDEX];
+    gam = par[GAMMA_INDEX];
+    h1 = par[H1_INDEX];
 
-  ok = 
-    R_FINITE(T) && R_FINITE(lam) &&
-    R_FINITE(a0) && R_FINITE(b1) &&
-    R_FINITE(a1) && R_FINITE(gam);
+    ok = 
+        R_FINITE(T) && R_FINITE(lam) &&
+        R_FINITE(a0) && R_FINITE(b1) &&
+        R_FINITE(a1) && R_FINITE(gam);
 
-  if (!ok) {
+    if (!ok) 
+    {
+        *ll = HUGE_NEGATIVE;
+        warning("improper arguments, assuming loglikelihood = %.0f", HUGE_NEGATIVE);
 
-    *ll = HUGE_NEGATIVE;
-    warning("improper arguments, assuming loglikelihood = %.0f", HUGE_NEGATIVE);
+        return;
+    }
 
-    return;
-  }
+    if (!R_FINITE(h1)) 
+    {
+        warning("Assuming h[1] = E(h)");
+        h1 = a0 / (1.0 - b1 - a1 * (1.0 + SQR(gam)));
+    }
 
-  if (!R_FINITE(h1)) {
+    *h  = h1;
+    *z  = *x / sqrt(*h) - lam + 0.5 * sqrt(*h);
+    *ll = T * log(M_2PI) + log(*h) + SQR(*z);
 
-    warning("Assuming h[1] = E(h)");
+    Lh = h;
+    x += 1;
+    h += inc;
+    
+    for ( ; x < xT && R_FINITE(*ll); x++, h += inc, Lh += inc) 
+    {
 
-    h1 = a0 / (1.0 - b1 - a1 * (1.0 + SQR(gam)));
+        *h = a0 + Lh[0] * (b1 + a1 * SQR(*z - gam));
+        z += inc;
+        *z = *x / sqrt(*h) - lam + 0.5 * sqrt(*h);
+        *ll += log(*h) + SQR(*z);
+    }
 
-  }
-
-  *h  = h1;
-  *z  = *x / sqrt(*h) - lam + 0.5 * sqrt(*h);
-  *ll = T * log(M_2PI) + log(*h) + SQR(*z);
-
-  Lh = h;
-  x += 1;
-  h += inc;
-
-
-  for ( ; x < xT && R_FINITE(*ll); x++, h += inc, Lh += inc) {
-
-    *h = a0 + Lh[0] * (b1 + a1 * SQR(*z - gam));
-
-    z += inc;
-
-    *z = *x / sqrt(*h) - lam + 0.5 * sqrt(*h);
-
-    *ll += log(*h) + SQR(*z);
-
-  }
-
-  *ll = R_FINITE(*ll) ? -0.5 * (*ll) : HUGE_NEGATIVE;
-
+    *ll = R_FINITE(*ll) ? -0.5 * (*ll) : HUGE_NEGATIVE;
 }
-
-
-
-
-
-
 
 
 static void ngarch11_chk(SEXP *x, SEXP *par, double *parArray, int *numprot)
 {
+    ENSURE_NUMERIC(*x, *numprot);
 
-  ENSURE_NUMERIC(*x, *numprot);
+    if (isNewList(*par)) 
+    {
+        parArray[LAMBDA_INDEX] = asReal(getListElt(*par,"lambda"));
+        parArray[A0_INDEX] = asReal(getListElt(*par,"a0"));
+        parArray[A1_INDEX] = asReal(getListElt(*par,"a1"));
+        parArray[B1_INDEX] = asReal(getListElt(*par,"b1"));
+        parArray[GAMMA_INDEX] = asReal(getListElt(*par,"gamma"));
+        parArray[H1_INDEX] = asReal(getListElt(*par,"h1"));
 
-  if (isNewList(*par)) {
-    
-    parArray[LAMBDA_INDEX] = asReal(getListElt(*par,"lambda"));
-    parArray[A0_INDEX] = asReal(getListElt(*par,"a0"));
-    parArray[A1_INDEX] = asReal(getListElt(*par,"a1"));
-    parArray[B1_INDEX] = asReal(getListElt(*par,"b1"));
-    parArray[GAMMA_INDEX] = asReal(getListElt(*par,"gamma"));
-    parArray[H1_INDEX] = asReal(getListElt(*par,"h1"));
+    } 
+    else 
+    {
+        ENSURE_NUMERIC(*par, *numprot);
+        ENSURE_LENGTH(*par, NUM_NG11_PAR, *numprot);
 
-  } else {
+        parArray[LAMBDA_INDEX] = REAL(*par)[LAMBDA_INDEX];
+        parArray[A0_INDEX] = REAL(*par)[A0_INDEX];
+        parArray[A1_INDEX] = REAL(*par)[A1_INDEX];
+        parArray[B1_INDEX] = REAL(*par)[B1_INDEX];
+        parArray[GAMMA_INDEX] = REAL(*par)[GAMMA_INDEX];
+        parArray[H1_INDEX] = REAL(*par)[H1_INDEX];
+    }
 
-    ENSURE_NUMERIC(*par, *numprot);
-    ENSURE_LENGTH(*par, NUM_NG11_PAR, *numprot);
-
-    parArray[LAMBDA_INDEX] = REAL(*par)[LAMBDA_INDEX];
-    parArray[A0_INDEX] = REAL(*par)[A0_INDEX];
-    parArray[A1_INDEX] = REAL(*par)[A1_INDEX];
-    parArray[B1_INDEX] = REAL(*par)[B1_INDEX];
-    parArray[GAMMA_INDEX] = REAL(*par)[GAMMA_INDEX];
-    parArray[H1_INDEX] = REAL(*par)[H1_INDEX];
-    
-  }
-
-  if (SET_NA_TO_ZERO(parArray[LAMBDA_INDEX])) warning ("Assuming lambda = 0");
-  if (SET_NA_TO_ZERO(parArray[A1_INDEX])) warning ("Assuming a1 = 0");
-  if (SET_NA_TO_ZERO(parArray[B1_INDEX])) warning ("Assuming b1 = 0");
-  if (SET_NA_TO_ZERO(parArray[GAMMA_INDEX])) warning ("Assuming gamma = 0");
+    if (SET_NA_TO_ZERO(parArray[LAMBDA_INDEX])) warning ("Assuming lambda = 0");
+    if (SET_NA_TO_ZERO(parArray[A1_INDEX])) warning ("Assuming a1 = 0");
+    if (SET_NA_TO_ZERO(parArray[B1_INDEX])) warning ("Assuming b1 = 0");
+    if (SET_NA_TO_ZERO(parArray[GAMMA_INDEX])) warning ("Assuming gamma = 0");
   
 }
-
-
-
-
-
-
 
 #define ANS_LEN 3
 SEXP ngarch11(SEXP x, SEXP par, SEXP ll_only)
 {
+    int numprot = 0;
+    long xLen, len;
+    double ll;
+    char *names[ANS_LEN] = {"ll", "h", "res"};
+    const int llonly = asInteger(ll_only);
+    double parArray[NUM_NG11_PAR] = {0};
 
-  int numprot = 0;
-  long xLen, len;
-  double ll;
-  char *names[ANS_LEN] = {"ll", "h", "res"};
-  const int llonly = asInteger(ll_only);
-  double parArray[NUM_NG11_PAR] = {0};
+    SEXP ans, h, res;
 
-  SEXP ans, h, res;
+    ngarch11_chk(&x, &par, parArray, &numprot);
 
-  ngarch11_chk(&x, &par, parArray, &numprot);
+    xLen = length(x);
+    len  = !llonly * xLen;
 
-  xLen = length(x);
-  len  = !llonly * xLen;
+    PROT2(h = NEW_NUMERIC(len), numprot);
+    PROT2(res = NEW_NUMERIC(len), numprot);
+    PROT2(ans = NEW_LIST(ANS_LEN), numprot);
 
-  PROT2(h = NEW_NUMERIC(len), numprot);
-  PROT2(res = NEW_NUMERIC(len), numprot);
-  PROT2(ans = NEW_LIST(ANS_LEN), numprot);
+    if (len == xLen) 
+    {
+        SET_NAMES(h, GET_NAMES(x));
+        SET_NAMES(res, GET_NAMES(x));
+    }
 
-  if (len == xLen) {
-    SET_NAMES(h, GET_NAMES(x));
-    SET_NAMES(res, GET_NAMES(x));
-  }
+    ng11(xLen, REAL(x), parArray, llonly, REAL(h), REAL(res), &ll);
 
-  ng11(xLen, REAL(x), parArray, llonly, REAL(h), REAL(res), &ll);
+    SET_ELT(ans, 0, ScalarReal(ll));
+    SET_ELT(ans, 1, h);
+    SET_ELT(ans, 2, res);
 
-  SET_ELT(ans, 0, ScalarReal(ll));
-  SET_ELT(ans, 1, h);
-  SET_ELT(ans, 2, res);
+    set_names(ans, names);
 
-  set_names(ans, names);
-
-  UNPROTECT(numprot);
+    UNPROTECT(numprot);
 
   return ans;
 
@@ -199,72 +178,61 @@ SEXP ngarch11(SEXP x, SEXP par, SEXP ll_only)
 
 
 
-
-
-
-
-
 static double ll_ngarch11(SEXP par, SEXP x)
-
-  /*******************************************************************
-   *
-   *  Description: Used in optimization to fit NGARCH(1, 1) model.
-   *    Modification of function ngarch11.
-   *
-   *******************************************************************/
-
+/*******************************************************************
+ *
+ *  Description: Used in optimization to fit NGARCH(1, 1) model.
+ *    Modification of function ngarch11.
+ *
+ *******************************************************************/
 {
-  int numprot = 0;
-  int ok;
-  double ll = 0.0;
+    int numprot = 0;
+    int ok;
+    double ll = 0.0;
 
-  ok = IS_NUMERIC(x) && IS_NUMERIC(par);
+    ok = IS_NUMERIC(x) && IS_NUMERIC(par);
 
-  if (!ok) error ("bad args to ll_ngarch11");
+    if (!ok) error ("bad args to ll_ngarch11");
 
-  ENSURE_LENGTH(par, NUM_NG11_PAR, numprot);
+    ENSURE_LENGTH(par, NUM_NG11_PAR, numprot);
   
-  ng11(length(x), REAL(x), REAL(par), 
-       /* llonly = */ 1, 
-       /* h = */ (double *)NULL, 
-       /* z = */ (double *)NULL, 
-       &ll);
+    ng11(length(x), REAL(x), REAL(par), 
+         /* llonly = */ 1, 
+         /* h = */ (double *)NULL, 
+         /* z = */ (double *)NULL, 
+         &ll);
 
-  UNPROTECT(numprot);
+    UNPROTECT(numprot);
 
-  return ll;
-
+    return ll;
 }
-
 
 
 
 static void adjustInitPar(SEXP *initPar, int parLen, int *numprot)
 {
-  SEXP par = R_NilValue;
+    SEXP par = R_NilValue;
   
-  if (isNewList(*initPar)) {
+    if (isNewList(*initPar)) 
+    {
+        PROT2(par = NEW_NUMERIC(parLen), *numprot);
 
-    PROT2(par = NEW_NUMERIC(parLen), *numprot);
+        REAL(par)[LAMBDA_INDEX] = asReal(getListElt(*initPar,"lambda"));
+        REAL(par)[A0_INDEX] = asReal(getListElt(*initPar,"a0"));
+        REAL(par)[A1_INDEX] = asReal(getListElt(*initPar,"a1"));
+        REAL(par)[B1_INDEX] = asReal(getListElt(*initPar,"b1"));
+        REAL(par)[GAMMA_INDEX] = asReal(getListElt(*initPar,"gamma"));
 
-    REAL(par)[LAMBDA_INDEX] = asReal(getListElt(*initPar,"lambda"));
-    REAL(par)[A0_INDEX] = asReal(getListElt(*initPar,"a0"));
-    REAL(par)[A1_INDEX] = asReal(getListElt(*initPar,"a1"));
-    REAL(par)[B1_INDEX] = asReal(getListElt(*initPar,"b1"));
-    REAL(par)[GAMMA_INDEX] = asReal(getListElt(*initPar,"gamma"));
+        if (H1_INDEX < parLen)
+            REAL(par)[H1_INDEX] = asReal(getListElt(*initPar,"h1"));
 
-    if (H1_INDEX < parLen)
-      REAL(par)[H1_INDEX] = asReal(getListElt(*initPar,"h1"));
+        SET_NA_TO_ZERO(REAL(par)[LAMBDA_INDEX]);
+        SET_NA_TO_ZERO(REAL(par)[A1_INDEX]);    
+        SET_NA_TO_ZERO(REAL(par)[B1_INDEX]);    
+        SET_NA_TO_ZERO(REAL(par)[GAMMA_INDEX]);
 
-    SET_NA_TO_ZERO(REAL(par)[LAMBDA_INDEX]);
-    SET_NA_TO_ZERO(REAL(par)[A1_INDEX]);    
-    SET_NA_TO_ZERO(REAL(par)[B1_INDEX]);    
-    SET_NA_TO_ZERO(REAL(par)[GAMMA_INDEX]);
-
-    *initPar = par;
-
-  }
-
+        *initPar = par;
+    }
 }
 
 
