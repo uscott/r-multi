@@ -12,7 +12,7 @@ evalNgarch11 = function(x, pars, llonly = FALSE)
 }
 
 
-fitNgarch11 = function(x, init = NULL, popSize = 5,
+fitNgarch11 = function( x, init = NULL, popSize = 5,
     stopLags = 5, minit = 5, maxit = 10,
     tol = 1e-5, fitInit = FALSE, option = NULL)
 {
@@ -22,26 +22,15 @@ fitNgarch11 = function(x, init = NULL, popSize = 5,
           PACKAGE = "uri")
 }
 
-## modInfo should correspond to the return value of fitNgarch11
 
-bootfitNgarch11 = function(
-    modInfo, numBoots = 20, popSize = 5, stopLags = 5,
-    minit = 5, maxit = 100,
-    tol = 1e-5, fitInit = FALSE, option = NULL )
+
+bootfitNgarch11 = function(x, init = NULL, popSize = 5,
+    stopLags = 5, minit = 5, maxit = 10,
+    tol = 1e-5, fitInit = FALSE, option = NULL, numBoots = 20 )
 {
-    z = modInfo$res
-    len = length( modInfo$res )
-    pars = modInfo$par[1:5,1]
-      
-    for ( i in 1:numBoots )
-    {
-        indices = sample( 1:len, len, rep = TRUE )
-        x = simNgarch11( len, paths = 1, pars, x0 = NULL, h0 = NULL,
-            z = z[ indices ] )$x
-        modInfo2 = fitNgarch11( x, init = pars, popSize = popSize,
-            stopLags = stopLags, minit = minit, maxit = maxit, tol = tol,
-            fitInit = fitInit, option = option )
-    }
+    .Call( "BootfitNgarch11", x, init, fitInit, popSize, tol,
+          stopLags, minit, maxit, option, numBoots,
+          PACKAGE = "uri" )
 }
 
 
