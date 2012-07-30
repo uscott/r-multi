@@ -3,9 +3,9 @@ library(uri)
 ######################################################################
 
 lambda = 0*0.05
-a0     = 0*2.5e-5 + 0.30^2 / 365
-a1     = 1e-3*0.06
-b1     = 1e-3*0.85
+a0     = 2.5e-5 + 0*0.30^2 / 365
+a1     = 1*0.06
+b1     = 1*0.85
 gamma  = 0*0.98
 
 pars = c(lambda, a0, a1, b1, gamma)
@@ -45,6 +45,11 @@ modInfo$freq = 1
 
 prcs  = ngarch11prices( exDts, modInfo )
 vols2 = ngarch11vols( prcs, S0 = 100, strikes = c( 90, 95, 100, 105, 110 ))
+
+tmp2 = bootfitNgarch11( x, init = tmp1$par, pop = 10,
+    stopLag = 1, minit = 100, maxit = 5e3, fitInit = T, opt = list(grad=TRUE),
+    numBoots = 50 )
+
 
 ##tmp2 = wfitNgarch11(x, minit=100, pop=10,maxit = 5e3, tol = 1e-3,
 ##  fitInit=T, option=list(grad=T))
