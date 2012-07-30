@@ -1,8 +1,6 @@
 #include "uri.h"
 #include <time.h>
 
-
-
 /**********************************************************************/
 /**********************************************************************/
 /**********************************************************************/
@@ -22,6 +20,68 @@
 #define B1_INDEX 3
 #define GAMMA_INDEX 4
 #define H1_INDEX 5
+
+
+static void sim_ng11_path(const long T, const double *par, double *x0,
+                          double *h0, double *z, double *x, double *h)
+{
+    const double *Lh = NULL;
+    double const *hE = h + T;
+
+    double z0;
+    double lam, a0, a1, b1, gam;
+    double a[ 1 ] = { 0.0 };
+    double b[ 1 ] = { 0.0 };
+
+    int ok;
+
+    ok = par && x && h;
+
+    if ( !ok )
+        error( "sim_ng11_path: Null pointer passed where not allowed" );
+
+    lam = par[ LAMBDA_INDEX ];
+    a0  = par[ A0_INDEX ];
+    a1  = par[ A1_INDEX ];
+    b1  = par[ B1_INDEX ];
+    gam = par[ GAMMA_INDEX ];
+
+    ok = x0 && h0 && R_FINITE( *x0 ) && R_FINITE( *h0 );
+
+    if ( !ok ) 
+    {
+        x0 = a;
+        h0 = b;
+
+        *h0 = a0 / (1 - b1 - a1 * (1 + SQR(gam)));
+        *x0 = -0.5 * (*h0) + lam * sqrt(*h0);
+
+        warning( "no starting points given" );
+    }
+
+    GetRNGstate();
+
+    z0  = *x0 - ( -0.5 * ( *h0 ) + lam * sqrt( *h0 ));
+    z0 /= sqrt( *h0 );
+    
+    *h = a0 + ( *h0 ) * ( b1 + a1 * SQR( z0 - gam ));
+    *x = -0.5 * ( *h ) + sqrt( *h ) * ( lam + *z );
+    
+    h  += 1;
+    x  += 1;
+    Lh  = h - 1;
+  
+    for ( ; h < hE && R_FINITE(*h); x++, h++, Lh++ ) 
+    {
+        *h  = a0 + ( *Lh ) * ( b1 + a1 * SQR( *z - gam ));
+         z += 1;
+        *x  = -0.5 * ( *h ) + sqrt( *h ) * ( lam + *z );
+    }
+
+    PutRNGstate();
+}
+
+
 static void ng11(const long T, const double *x, const double *par,
                  int llonly, double *h, double *z, double *ll)
 
@@ -247,22 +307,22 @@ static void adjustInitPar(SEXP *initPar, int parLen, int *numprot)
 
 
 #define ANS_LEN 7
-SEXP fit_ngarch11(SEXP x, SEXP initPar, SEXP fitInit, 
-                  SEXP basePopSize, SEXP tol, 
-                  SEXP stopLags, SEXP minit, SEXP maxit, SEXP options)
+SEXP fit_ngarch11( SEXP x, SEXP initPar, SEXP fitInit, 
+                   SEXP basePopSize, SEXP tol, 
+                   SEXP stopLags, SEXP minit, SEXP maxit, SEXP options)
 {
-    const int parLen       = NUM_NG11_PAR-1 + !!asInteger( fitInit );
-    const int ibasePopSize = asInteger( basePopSize );
-    const long istopLags   = asInteger( stopLags );
-    const long imaxit      = asInteger( maxit );
-    const long iminit      = asInteger( minit );
-    const double dtol      = asReal( tol );
+    const int    parLen       = NUM_NG11_PAR-1 + !!asInteger( fitInit );
+    const int    ibasePopSize = asInteger( basePopSize );
+    const long   istopLags    = asInteger( stopLags );
+    const long   imaxit       = asInteger( maxit );
+    const long   iminit       = asInteger( minit );
+    const double dtol         = asReal( tol );
 
     int  numprot = 0;
     int  gradToo;
     long gradMaxIt;
     char *names[ ANS_LEN ] = 
-        {"par", "ll", "convergence", "x", "h", "res", "gradconv"};
+        { "par", "ll", "convergence", "x", "h", "res", "gradconv" };
     SEXP ans, fit1, fit2, tmp, dimNames, parNames;
 
     ENSURE_NUMERIC( x, numprot );
@@ -282,7 +342,7 @@ SEXP fit_ngarch11(SEXP x, SEXP initPar, SEXP fitInit,
     gradToo = asInteger( getListElt( options, "grad" ));
     gradToo = SET_NA_TO_ZERO( gradToo );
 
-    if (gradToo) 
+    if ( gradToo ) 
     {
         gradMaxIt = asInteger(getListElt(options,"maxit"));
     
@@ -333,64 +393,67 @@ SEXP fit_ngarch11(SEXP x, SEXP initPar, SEXP fitInit,
 #undef ANS_LEN
 
 
-static void sim_ng11_path(const long T, const double *par, double *x0,
-                          double *h0, double *z, double *x, double *h)
+
+SEXP BootfitNgarch11( SEXP x, SEXP initPar, SEXP fitInit, 
+                      SEXP basePopSize, SEXP tol, 
+                      SEXP stopLags, SEXP minit, SEXP maxit, SEXP options,
+                      SEXP numBoots )
 {
-    const double *Lh = NULL;
-    double const *hE = h + T;
+    SEXP 
+        baseFit = R_NilValue, thisFit = R_NilValue, res, thisRes,
+        bootPars, thisPars, x_new;
+    int nboots = asInteger( numBoots ), numprot = 0, i, xlen;
+    double *z, *pars, *thisPath, *thisVar;
+    const int parLen = NUM_NG11_PAR-1 + !!asInteger( fitInit );
 
-    double z0;
-    double lam, a0, a1, b1, gam;
-    double a[ 1 ] = { 0.0 };
-    double b[ 1 ] = { 0.0 };
+    xlen = length( x );    
 
-    int ok;
+    PROT2( baseFit = fit_ngarch11( x, initPar, fitInit, basePopSize, tol,
+                                   stopLags, minit, maxit, options ),
+           numprot );
+    
+    PROT2( res = getListElt( baseFit, "res" ), numprot );
+    PROT2( thisRes = NEW_NUMERIC( xlen ), numprot );    
+    PROT2( bootPars = allocMatrix( REALSXP, parLen, nboots + 1 ), numprot );
+    PROT2( x_new = NEW_NUMERIC( xlen ), numprot );
+    
+    z = REAL( thisRes );    
+    pars = matcol1( bootPars, 0 );    
+    
+    memcpy( pars, REAL( getListElt( baseFit, "par" ) ), parLen * sizeof( double ));    
 
-    ok = par && x && h;
-
-    if ( !ok )
-        error( "sim_ng11_path: Null pointer passed where not allowed" );
-
-    lam = par[ LAMBDA_INDEX ];
-    a0  = par[ A0_INDEX ];
-    a1  = par[ A1_INDEX ];
-    b1  = par[ B1_INDEX ];
-    gam = par[ GAMMA_INDEX ];
-
-    ok = x0 && h0 && R_FINITE( *x0 ) && R_FINITE( *h0 );
-
-    if ( !ok ) 
-    {
-        x0 = a;
-        h0 = b;
-
-        *h0 = a0 / (1 - b1 - a1 * (1 + SQR(gam)));
-        *x0 = -0.5 * (*h0) + lam * sqrt(*h0);
-
-        warning( "no starting points given" );
+    thisPath = (double *) malloc( xlen * sizeof( double ));    
+    thisVar  = (double *) malloc( xlen * sizeof( double ));
+    
+    for ( i = 1; i <= nboots; ++i )
+    {        
+        pars = matcol1( bootPars, i );
+        
+        get_random_sample( REAL( res ), z, xlen, xlen );
+        
+        sim_ng11_path( xlen, matcol1( bootPars, 0 ), NULL, NULL, z, thisPath, thisVar );
+     
+        memcpy( REAL( x_new ), thisPath, xlen * sizeof( double ));
+        
+        PROTECT( thisFit = fit_ngarch11( x_new, initPar, fitInit, basePopSize, tol,
+                                         stopLags, minit, maxit, options ));
+        
+        
+        memcpy( pars, REAL( getListElt( thisFit, "par" )), parLen * sizeof( double ));
+        
+        UNPROTECT( 1 );        
     }
 
-    GetRNGstate();
-
-    z0  = *x0 - ( -0.5 * ( *h0 ) + lam * sqrt( *h0 ));
-    z0 /= sqrt( *h0 );
+    free( thisPath );
+    free( thisVar );
     
-    *h = a0 + ( *h0 ) * ( b1 + a1 * SQR( z0 - gam ));
-    *x = -0.5 * ( *h ) + sqrt( *h ) * ( lam + *z );
-    
-    h  += 1;
-    x  += 1;
-    Lh  = h - 1;
-  
-    for ( ; h < hE && R_FINITE(*h); x++, h++, Lh++ ) 
-    {
-        *h  = a0 + ( *Lh ) * ( b1 + a1 * SQR( *z - gam ));
-         z += 1;
-        *x  = -0.5 * ( *h ) + sqrt( *h ) * ( lam + *z );
-    }
+    UNPROTECT( numprot );    
 
-    PutRNGstate();
+    return bootPars;    
 }
+
+
+
 
 
 
