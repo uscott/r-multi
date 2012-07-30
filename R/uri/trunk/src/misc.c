@@ -1,215 +1,200 @@
-
 #include "uri.h"
-
 #include <assert.h>
 #include <time.h>
 
 
-SEXP asRealMatrix(SEXP x)
+
+SEXP asRealMatrix( SEXP x )
 {
-  int numprot = 0;
-  long xlen = 0;
-  SEXP y = R_NilValue, dim = R_NilValue;
+    int  numprot = 0;
+    long xlen    = 0;
+    SEXP 
+        y        = R_NilValue, 
+        dim      = R_NilValue;
 
+    if ( IS_MATRIX( x ))
+        return x;
 
-  if (IS_MATRIX(x))
-    return x;
-
-  ENSURE_NUMERIC(x, numprot);
-  xlen = length(x);
+    ENSURE_NUMERIC( x, numprot );
+    xlen = length(x);
  
-  PROT2(dim = NEW_INTEGER(2), numprot);
-  PROT2(y = NEW_NUMERIC(xlen), numprot);
+    PROT2( dim = NEW_INTEGER( 2 ),    numprot);
+    PROT2( y   = NEW_NUMERIC( xlen ), numprot);
 
-  REAL(dim)[0] = xlen;
-  REAL(dim)[1] = 1;
+    REAL( dim )[ 0 ] = xlen;
+    REAL( dim )[ 1 ] = 1;
     
-  memcpy(REAL(y), REAL(x), xlen*sizeof(double));
+    memcpy( REAL(y), REAL(x), xlen * sizeof( double ));
     
-  setAttrib(y, R_DimSymbol, dim);
+    setAttrib( y, R_DimSymbol, dim );
 
-  UNPROTECT(numprot);
+    UNPROTECT( numprot );
 
-  return y;
-
-
+    return y;
 }
+
 
 
 SEXP dSubMatrix(SEXP x, long row1, long row2, long col1, long col2)
 {
-  int ok, numprot=0;
-  long j, mx, nx, mAns, nAns;
-  double *xPtr, *ansPtr;
-  SEXP ans;
+    int ok, numprot=0;
+    long j, mx, nx, mAns, nAns;
+    double *xPtr, *ansPtr;
+    SEXP ans;
 
-  ENSURE_NUMERIC(x,numprot);
+    ENSURE_NUMERIC(x,numprot);
 
-  mx = nrows(x);
-  nx = ncols(x);
-  mAns = row2 - row1 + 1;
-  nAns = col2 - col1 + 1;
+    mx = nrows(x);
+    nx = ncols(x);
+    mAns = row2 - row1 + 1;
+    nAns = col2 - col1 + 1;
 
-  ok = isMatrix(x) && 
-    0 <= row1 && row1 <= row2 && row2 < mx && 
-    0 <= col1 && col1 <= col2 && col2 < nx;
+    ok = isMatrix(x) && 
+        0 <= row1 && row1 <= row2 && row2 < mx && 
+        0 <= col1 && col1 <= col2 && col2 < nx;
 
-  if (!ok)
-    error ("bad args dSubMatrix");
+    if (!ok)
+        error ("bad args dSubMatrix");
 
-  PROT2(ans = allocMatrix(REALSXP, mAns, nAns),numprot);
+    PROT2( ans = allocMatrix( REALSXP, mAns, nAns ), numprot );
 
-  for (j = 0; j < nAns; j++) {
+    for (j = 0; j < nAns; j++) 
+    {
+        ansPtr = REAL(ans) + j * mAns;
+        xPtr = REAL(x) + (col1 + j) * mx + row1;
+        memcpy(ansPtr, xPtr, mAns * sizeof(double));
+    }
 
-    ansPtr = REAL(ans) + j * mAns;
-    xPtr = REAL(x) + (col1 + j) * mx + row1;
+    UNPROT2;
 
-    memcpy(ansPtr, xPtr, mAns * sizeof(double));
-
-  }
-
-  UNPROT2;
-
-  return ans;
+    return ans;
 }
-
 
 
 
 SEXP dSubVector(SEXP x, long ind1, long ind2)
 {
-  int numprot=0;
-  SEXP ans;
+    int numprot=0;
+    SEXP ans;
 
-  ENSURE_NUMERIC(x,numprot);
+    ENSURE_NUMERIC(x,numprot);
 
-  if ( !(0 <= ind1 && ind1 <= ind2 && ind2 < length(x)) )
-    error ("bad args dSubVector");
+    if ( !(0 <= ind1 && ind1 <= ind2 && ind2 < length(x)) )
+        error ("bad args dSubVector");
   
-  PROT2(ans = NEW_NUMERIC(ind2 - ind1 + 1),numprot);
+    PROT2(ans = NEW_NUMERIC(ind2 - ind1 + 1),numprot);
 
-  memcpy(REAL(ans), REAL(x) + ind1, length(ans) * sizeof(double));
+    memcpy(REAL(ans), REAL(x) + ind1, length(ans) * sizeof(double));
 
-  UNPROT2;
+    UNPROT2;
 
-  return ans;
+    return ans;
 }
 
 
 
 void dnormalize(double *x, long len)
 {
-  register long i;
-  register double norm = 0.0; 
-  register double *y;
+    register long i;
+    register double norm = 0.0; 
+    register double *y;
 
-  for (i = 0, y = x; i < len; i++, y++)
-    norm += SQR(*y);
+    for (i = 0, y = x; i < len; i++, y++)
+        norm += SQR(*y);
 
-  norm = sqrt(norm);
+    norm = sqrt(norm);
 
-  for (i = 0; i < len; i++)
-    *x++ /= norm;
-
+    for (i = 0; i < len; i++)
+        *x++ /= norm;
 }
 
 
 
 double dmean(const double *x, long n)
 {
-  register long i;
-  register double mean = 0.0;
+    register long i;
+    register double mean = 0.0;
 
-  for (i = 0; i < n; i++)
-    mean += *x++;
+    for ( i = 0; i < n; i++ )
+        mean += *x++;
 
-  return mean/n;
-  
+    return mean / n;
 }
-
 
 
 
 double dvar(const double *x, long n)
 {
+    register long i;
+    register double var = 0.0, m;
 
-  register long i;
-  register double var = 0.0, m;
+    for (i = 0; i < n; i++)
+        var += DSQR(x[i]);
 
-  for (i = 0; i < n; i++)
-    var += DSQR(x[i]);
+    var /= (double)n;
 
-  var /= (double)n;
+    m = dmean( x, n );
 
-  m = dmean(x, n);
-
-  return var - m*m;
-
+    return var - m * m;
 }
-
 
 
 
 void dswap(double *x, double *y)
 {
-  double tmp;
+    double tmp;
 
-  tmp = *x;
-  *x  = *y;
-  *y  = tmp;
-
+    tmp = *x;
+    *x  = *y;
+    *y  = tmp;
 }
 
 
 
 SEXP numrep(SEXP x, const long n)
 {
-  long i, j, m, numprot=0;
+    long i, j, m, numprot=0;
 
-  if (n < 1)
-    return R_NilValue;
+    if (n < 1)
+        return R_NilValue;
 
-  ENSURE_NUMERIC(x,numprot);
+    ENSURE_NUMERIC(x,numprot);
 
-  m = length(x);
+    m = length(x);
 
-  PROT2(SET_LENGTH(x, m * n),numprot);
+    PROT2( SET_LENGTH( x, m * n ), numprot);
 
-  for (j = 1; j < n; j++)
-    for (i = 0; i < m; i++)
-      REAL(x)[i + m * j] = REAL(x)[i];
+    for (j = 1; j < n; j++)
+        for (i = 0; i < m; i++)
+            REAL(x)[i + m * j] = REAL(x)[i];
 
-  UNPROT2;
+    UNPROT2;
 
-  return x;
+    return x;
 }
-
-
-
 
 
 
 SEXP intrep(SEXP x, const long n)
 {
-  long i, j, m;
+    long i, j, m;
 
-  if (n < 1)
-    return R_NilValue;
+    if (n < 1)
+        return R_NilValue;
 
-  PROTECT(x = AS_INTEGER(x));
+    PROTECT(x = AS_INTEGER(x));
 
-  m = length(x);
+    m = length(x);
 
-  PROTECT(SET_LENGTH(x, m * n));
+    PROTECT(SET_LENGTH(x, m * n));
+    
+    for (j = 1; j < n; j++)
+        for (i = 0; i < m; i++)
+            INTEGER(x)[i + m * j] = INTEGER(x)[i];
 
+    UNPROTECT(2);
 
-  for (j = 1; j < n; j++)
-    for (i = 0; i < m; i++)
-      INTEGER(x)[i + m * j] = INTEGER(x)[i];
-
-  UNPROTECT(2);
-
-  return x;
+    return x;
 }
 
 
@@ -368,25 +353,24 @@ SEXP na_omit(SEXP x)
       alen += 1;
     }
 
-  UNPROTECT(2);
+  UNPROTECT( 2 );
 
-  return SET_LENGTH(ans, alen);
+  return SET_LENGTH( ans, alen );
 }
-
 
 
 
 SEXP make_sexp_vec(const double *x, const int len)
 {
-  SEXP ans;
+    SEXP ans;
 
-  PROTECT(ans = NEW_NUMERIC(len));
+    PROTECT( ans = NEW_NUMERIC(len) );
 
-  memcpy(REAL(ans), x, len * sizeof(double));
+    memcpy( REAL( ans ), x, len * sizeof( double ));
 
-  UNPROTECT(1);
+    UNPROTECT(1);
 
-  return ans;
+    return ans;
 }
 
 
@@ -409,76 +393,71 @@ void set_names(SEXP dest, char **names)
 
 
 
-double *matcol1(const SEXP mat, const int j)
-
-  /********************************************************************
-   *
-   *   Description: Returns pointer to jth column of matrix mat
-   *     (where the column indexing starts at 0).
-   *
-   ********************************************************************/
-
+double *matcol1( const SEXP mat, const int j )
+/********************************************************************
+ *
+ *   Description: Returns pointer to jth column of matrix mat
+ *     (where the column indexing starts at 0).
+ *
+ ********************************************************************/
 {
-  double *ans = NULL;
+    double *ans = NULL;
 
-  if (!isMatrix(mat) || j < 0 || ncols(mat) <= j)
-    error ("matcol1 :  Non-matrix or index out of range");
+    if ( !isMatrix( mat ) || j < 0 || ncols( mat ) <= j )
+        error( "matcol1 :  Non-matrix or index out of range" );
 
-  ans = (double *) (REAL(mat) + nrows(mat) * j);
+    ans = (double *) ( REAL( mat ) + nrows( mat ) * j);
 
-  return ans;
+    return ans;
 }
 
 
 SEXP matcol2(const SEXP mat, const int j)
-
-  /*******************************************************************
-   *
-   *  Description: Returns a numeric SEXP that is a *COPY* of the jth
-   *    column of mat.  Column indexing starts at 0.
-   *
-   *******************************************************************/
-
+/*******************************************************************
+ *
+ *  Description: Returns a numeric SEXP that is a *COPY* of the jth
+ *    column of mat.  Column indexing starts at 0.
+ *
+ *******************************************************************/
 {
-  int m;
-  SEXP ans;
+    int m;
+    SEXP ans;
 
-  m = nrows(mat);
+    m = nrows(mat);
 
-  PROTECT(ans = NEW_NUMERIC(m));
+    PROTECT( ans = NEW_NUMERIC( m ));
 
-  memcpy(REAL(ans), REAL(mat) + m * j, m * sizeof(double));
+    memcpy( REAL(ans), REAL(mat) + m * j, m * sizeof(double));
 
-  UNPROTECT(1);
+    UNPROTECT( 1 );
 
-  return ans;
+    return ans;
 }
-
 
 
 
 void dmatrow1(SEXP mat, const int i, double *ans)
-
-  /*******************************************************************
-   *
-   *  Description: Puts the values of the i^th row of numeric matrix mat
-   *    into ans[0], ..., ans[ncols(mat) - 1].  Row indexing starts
-   *    at 0.
-   *
-   *******************************************************************/
-
+/*******************************************************************
+ *
+ *  Description: Puts the values of the i^th row of numeric matrix mat
+ *    into ans[0], ..., ans[ncols(mat) - 1].  Row indexing starts
+ *    at 0.
+ *
+ *******************************************************************/
 {
-  const int m = nrows(mat);
-  const int n = ncols(mat);
-  int j;
-  double *p;
+    const int m = nrows(mat);
+    const int n = ncols(mat);
+    int j;
+    double *p;
 
-  if (!isMatrix(mat) || i < 0 || m <= i)
-    error ("bad argument passed to dmatrow1");
+    if (!isMatrix(mat) || i < 0 || m <= i)
+        error ("bad argument passed to dmatrow1");
 
-  for (j = 0, p = REAL(mat) + i; j < n; j++, p += m)
-    *ans++ = *p;
+    for (j = 0, p = REAL(mat) + i; j < n; j++, p += m)
+        *ans++ = *p;
 }
+
+
 
 void dmatrow2(SEXP mat, const long i, double **ans)
 
@@ -490,43 +469,39 @@ void dmatrow2(SEXP mat, const long i, double **ans)
    *******************************************************************/
 
 {
+    const long m = nrows(mat);
+    const long n = ncols(mat);
+    long j;
+    double *p;
 
-  const long m = nrows(mat);
-  const long n = ncols(mat);
-  long j;
-  double *p;
+    if (!isMatrix(mat) || i < 0 || m <= i)
+        error ("bad argument passed to dmatrow1");
 
-  if (!isMatrix(mat) || i < 0 || m <= i)
-    error ("bad argument passed to dmatrow1");
-
-  for (j = 0, p = REAL(mat) + i; j < n; j++, p += m, ans++)
-    *ans = p;
-
+    for (j = 0, p = REAL(mat) + i; j < n; j++, p += m, ans++)
+        *ans = p;
 }
+
 
 
 void cmatrow1(const SEXP mat, const int i, char *ans)
-
-  /*******************************************************************
-   *
-   *  Description: Puts the values of the i^th row of *character* mat
-   *    into ans[0], ..., ans[ncols(mat) - 1].  Row indexing starts
-   *    at 0.
-   *
-   *******************************************************************/
-
+/*******************************************************************
+ *
+ *  Description: Puts the values of the i^th row of *character* mat
+ *    into ans[0], ..., ans[ncols(mat) - 1].  Row indexing starts
+ *    at 0.
+ *
+ *******************************************************************/
 {
-  const int m = nrows(mat);
-  const int n = ncols(mat);
-  int j;
+    const int m = nrows(mat);
+    const int n = ncols(mat);
+    int j;
 
-  if (!isMatrix(mat) || i < 0 || m <= i)
-    error ("bad argument passed to cmatrow1");
+    if (!isMatrix(mat) || i < 0 || m <= i)
+        error ("bad argument passed to cmatrow1");
 
-  for (j = 0; j < n; j++)
-    *ans++ = *CHAR(STRING_ELT(mat, m * j));
+    for (j = 0; j < n; j++)
+        *ans++ = *CHAR(STRING_ELT(mat, m * j));
 }
-
 
 
 
@@ -603,7 +578,6 @@ SEXP getListElt(SEXP list, const char *str)
 
 
 SEXP feval(const SEXP fn, const SEXP par, const SEXP env)
-  // Last modified 19-Sep-2002.
 {
   SEXP R_fcall;
 
