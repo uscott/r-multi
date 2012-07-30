@@ -3,7 +3,7 @@ library( uri )
 qqq = read.csv( "QQQ.csv" )
 len = nrow(qqq)
 
-qqq = qqq[ ( len - 3*252 ):len, ]
+qqq = qqq[ ( len - 1*252 ):len, ]
 x   = qqq$Return
 
 tmp1 = fitNgarch11(x, stopLag=50,maxit = 5e3, tol = 1e-3, fitInit=TRUE, option=list(grad=T))
@@ -18,5 +18,7 @@ exDts = c( "2012-08-17", "2012-09-21" )
 
 prcs = ngarch11prices( exDts, modInfo, paths = 20e3 )
 
-S0   = 63.5 + 0*qqq[ nrow(qqq), "Adj.Close" ]
-vols = ngarch11vols( prcs, S0=S0,strikes=S0-c(-3,-2,-1,0,1,2,3)+.5)
+strikes = 60:66
+
+S0   = 62.4 + 0*qqq[ nrow(qqq), "Adj.Close" ]
+vols = ngarch11vols( prcs, S0=S0,strikes=strikes)

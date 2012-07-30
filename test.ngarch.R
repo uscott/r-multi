@@ -1,77 +1,61 @@
-
-
 library(uri)
 
 ######################################################################
 
-
-
-
-
-lambda = 0.05
-a0 = 2.5e-5
-a1 = 0.06
-b1 = 0.85
-gamma = 0*0.98
+lambda = 0*0.05
+a0     = 0*2.5e-5 + 0.30^2 / 365
+a1     = 1e-3*0.06
+b1     = 1e-3*0.85
+gamma  = 0*0.98
 
 pars = c(lambda, a0, a1, b1, gamma)
 
 
-n = 2e3
+n   = 2e3
 tmp = simNgarch11(n, paths = 1, par = pars, z = NULL)
+x   = tmp$x[,1]
 
-x = tmp$x[,1]
+plot( x )
 
+tmp1 = fitNgarch11( x, stopLag=50, maxit = 5e3, tol = 1e-3,
+    fitInit=TRUE, option=list(grad=T))
 
+tmp1 = fitNgarch11( x, init = tmp1$par, pop = 10,
+    stopLag = 1, minit = 100, maxit = 5e3, fitInit = T, opt = list(grad=TRUE))
 
-tmp1 = fitNgarch11(x, stopLag=50,maxit = 5e3, tol = 1e-3, fitInit=TRUE, option=list(grad=T))
-
-tmp1 = fitNgarch11(x, init = tmp1$par, pop=10,
-  stopLag=1,minit = 100, maxit = 5e3, fitInit=T,opt=list(grad=TRUE))
-
-modInfo = tmp1
+modInfo      = tmp1
 modInfo$freq = 1
 
 if ( TRUE )
-  {
-    modInfo$par["lambda",1] = 0
-    modInfo$par["a0",1] = 0.30^2 / 365
-    modInfo$par["a1",1] = 0
-    modInfo$par["b1",1] = 0
-    modInfo$par["gamma",1] = 0
-    modInfo$par["h1",1] = 0.30^2 / 365
-  }
+{
+    modInfo$par[ "lambda", 1] = 0
+    modInfo$par[ "a0"    , 1] = 0.30^2 / 365
+    modInfo$par[ "a1"    , 1] = 0
+    modInfo$par[ "b1"    , 1] = 0
+    modInfo$par[ "gamma" , 1] = 0
+    modInfo$par[ "h1"    , 1] = 0.30^2 / 365
+}
 
-exDts = c( "2012-08-01", "2012-09-01" )
+exDts = c( "2012-09-01", "2012-10-01" )
+prcs  = ngarch11prices( exDts, modInfo )
+vols1 = ngarch11vols( prcs, S0 = 100, strikes = c( 90, 95, 100, 105, 110 ))
 
-prcs = ngarch11prices( exDts, modInfo )
-
-vols1 = ngarch11vols( prcs, S0=100,strikes=c(90,95,100,105,110))
-
-modInfo = tmp1
+modInfo      = tmp1
 modInfo$freq = 1
 
-prcs = ngarch11prices( exDts, modInfo )
-vols2 = ngarch11vols( prcs, S0=100,strikes=c(90,95,100,105,110))
+prcs  = ngarch11prices( exDts, modInfo )
+vols2 = ngarch11vols( prcs, S0 = 100, strikes = c( 90, 95, 100, 105, 110 ))
 
-#tmp2 = wfitNgarch11(x, minit=100, pop=10,maxit = 5e3, tol = 1e-3,
-#  fitInit=T, option=list(grad=T))
+##tmp2 = wfitNgarch11(x, minit=100, pop=10,maxit = 5e3, tol = 1e-3,
+##  fitInit=T, option=list(grad=T))
 
-#tmp2 = wfitNgarch11(x, init=tmp2$par, minit=100, pop=10,maxit = 5e2, tol = 1e-3,
-#  fitInit=T, option=list(grad=T))
-
-
-
-
-
-
+##tmp2 = wfitNgarch11(x, init=tmp2$par, minit=100, pop=10,maxit = 5e2, tol = 1e-3,
+##  fitInit=T, option=list(grad=T))
 
 
 
 ######################################################################
 ## Test ar1ngarch11a:
-
-
 n = 1e3
 
 m0 = 0.0
@@ -103,10 +87,8 @@ fit = fit.ar1ngarch11(x, method = c("ga", "N", "C", "ga", "gr"),
 
 
 
-
 ######################################################################
 ## Test augmented NGARCH:
-
 
 n = 1e3
 
@@ -123,7 +105,6 @@ gamma = .5
 
 h0 = 1e-4
 # simulate path
-
 
 par = c(m0, lambda, a00, a01, a1, b1, gamma, h0)
 
@@ -178,9 +159,6 @@ tmp = fit.seasonal.ngarch11(x, yday, maxit = 1e2)
 
 tmp1 = seasonal.ngarch11(x, yday, par = par)
 tmp2 = seasonal.ngarch11(x, yday, par = tmp$par)
-
-
-
 
 
 
@@ -245,5 +223,3 @@ tmp = sim.decay.ngarch11(n = n, paths = 1, dt = 1, y = y,
   age = age, par = par)
 
 tmp2 = fit.decay.ngarch11(tmp$x, dt, y, age, init = par[-1], fit.init = T)
-
-
