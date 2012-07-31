@@ -344,7 +344,7 @@ SEXP fit_ngarch11( SEXP x, SEXP initPar, SEXP fitInit,
 
     if ( gradToo ) 
     {
-        gradMaxIt = asInteger(getListElt(options,"maxit"));
+        gradMaxIt = asInteger( getListElt( options, "maxit" ));
     
         if ( !R_FINITE( (double)gradMaxIt ) || gradMaxIt <= 0)
             gradMaxIt = imaxit;
@@ -393,7 +393,7 @@ SEXP fit_ngarch11( SEXP x, SEXP initPar, SEXP fitInit,
 #undef ANS_LEN
 
 
-
+#define ANS_LEN 11
 SEXP BootfitNgarch11( SEXP x, SEXP initPar, SEXP fitInit, 
                       SEXP basePopSize, SEXP tol, 
                       SEXP stopLags, SEXP minit, SEXP maxit, SEXP options,
@@ -401,26 +401,42 @@ SEXP BootfitNgarch11( SEXP x, SEXP initPar, SEXP fitInit,
 {
     SEXP 
         baseFit = R_NilValue, thisFit = R_NilValue, res, thisRes,
-        bootPars, thisPars, x_new;
+        bootPars, thisPars, x_new, ans, bootRes, bootPaths, bootVar,
+        parNames, dimNames;
     int nboots = asInteger( numBoots ), numprot = 0, i, xlen;
     double *z, *pars, *thisPath, *thisVar;
     const int parLen = NUM_NG11_PAR-1 + !!asInteger( fitInit );
+    char *names[ ANS_LEN ] = 
+        { "par", "ll", "convergence", "x", "h", "res", "gradconv", "bootPar", 
+          "bootPaths", "bootVar", "bootRes" };
 
-    xlen = length( x );    
-
+    ENSURE_NUMERIC( x, numprot );
+    
+    xlen = length( x );
+    adjustInitPar( &initPar, parLen, &numprot );
+    
     PROT2( baseFit = fit_ngarch11( x, initPar, fitInit, basePopSize, tol,
                                    stopLags, minit, maxit, options ),
            numprot );
-    
+
+    PROT2( ans = NEW_LIST( ANS_LEN ), numprot );    
     PROT2( res = getListElt( baseFit, "res" ), numprot );
     PROT2( thisRes = NEW_NUMERIC( xlen ), numprot );    
     PROT2( bootPars = allocMatrix( REALSXP, parLen, nboots + 1 ), numprot );
+    PROT2( bootPaths = allocMatrix( REALSXP, xlen, nboots + 1 ), numprot );
+    PROT2( bootVar = allocMatrix( REALSXP, xlen, nboots + 1 ), numprot );    
+    PROT2( bootRes = allocMatrix( REALSXP, xlen, nboots + 1 ), numprot );    
     PROT2( x_new = NEW_NUMERIC( xlen ), numprot );
+    PROT2( parNames = NEW_STRING( parLen ), numprot );
+    PROT2( dimNames = NEW_LIST( 2 ), numprot );
     
     z = REAL( thisRes );    
     pars = matcol1( bootPars, 0 );    
     
     memcpy( pars, REAL( getListElt( baseFit, "par" ) ), parLen * sizeof( double ));    
+    memcpy( matcol1( bootPaths, 0 ), REAL( x ), xlen * sizeof( double ));
+    memcpy( matcol1( bootVar, 0 ), REAL( getListElt( baseFit, "h" )), xlen * sizeof( double ));    
+    memcpy( matcol1( bootRes, 0 ), REAL( getListElt( baseFit, "res" )), xlen * sizeof( double ));    
 
     thisPath = (double *) malloc( xlen * sizeof( double ));    
     thisVar  = (double *) malloc( xlen * sizeof( double ));
@@ -440,20 +456,46 @@ SEXP BootfitNgarch11( SEXP x, SEXP initPar, SEXP fitInit,
         
         
         memcpy( pars, REAL( getListElt( thisFit, "par" )), parLen * sizeof( double ));
+        memcpy( matcol1( bootPaths, i ), thisPath, xlen * sizeof( double ));
+        memcpy( matcol1( bootVar, i ), thisVar, xlen * sizeof( double ));
+        memcpy( matcol1( bootRes, i ), z, xlen * sizeof( double ));
         
+
         UNPROTECT( 1 );        
     }
 
+    CHAR_PTR( parNames )[ LAMBDA_INDEX ] = mkChar( "lambda" );
+    CHAR_PTR( parNames )[ A0_INDEX ]     = mkChar( "a0" );
+    CHAR_PTR( parNames )[ A1_INDEX ]     = mkChar( "a1" );
+    CHAR_PTR( parNames )[ B1_INDEX ]     = mkChar( "b1" );
+    CHAR_PTR( parNames )[ GAMMA_INDEX ]  = mkChar( "gamma" );
+
+    if ( NUM_NG11_PAR == parLen )
+        CHAR_PTR( parNames )[ H1_INDEX ] = mkChar( "h1" );
+
+    SET_ELT( dimNames, 0, parNames );
+    SET_ELT( dimNames, 1, R_NilValue );
+
+    setAttrib( bootPars, R_DimNamesSymbol, dimNames );
+    
+    for ( i = 0; i < ANS_LEN - 4; ++i )
+        SET_ELT( ans, i, getListElt( baseFit, names[ i ] ));
+
+    SET_ELT( ans, ANS_LEN - 4, bootPars );
+    SET_ELT( ans, ANS_LEN - 3, bootPaths );
+    SET_ELT( ans, ANS_LEN - 2, bootVar );
+    SET_ELT( ans, ANS_LEN - 1, bootRes );    
+    
+    set_names( ans, names );
+    
     free( thisPath );
     free( thisVar );
     
     UNPROTECT( numprot );    
 
-    return bootPars;    
+    return ans;    
 }
-
-
-
+#undef ANS_LEN
 
 
 
