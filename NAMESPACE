@@ -1,12 +1,15 @@
-useDynLib(uri)
+useDynLib( uri )
 
 # Import package dependencies
 
 
 # Export all names
 export( simNgarch11 )
+export( bootsimNgarch11 )
 export( fitNgarch11 )
 export( bootfitNgarch11 )
 export( ngarch11prices )
 export( ngarch11vols )
 export( read.yahoo )
+export( bs )
+export( bs2 )
