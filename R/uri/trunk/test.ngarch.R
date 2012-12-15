@@ -2,11 +2,13 @@ library(uri)
 
 ######################################################################
 
+exDts = c( "2012-09-01", "2012-10-01" )
+
 lambda = 0*0.05
 a0     = 2.5e-5 + 0*0.30^2 / 365
 a1     = 1*0.06
 b1     = 1*0.85
-gamma  = 0*0.98
+gamma  = 0.5
 
 pars = c(lambda, a0, a1, b1, gamma)
 
@@ -18,15 +20,16 @@ x   = tmp$x[,1]
 plot( x )
 
 tmp1 = fitNgarch11( x, stopLag=50, maxit = 5e3, tol = 1e-3,
-    fitInit=TRUE, option=list(grad=T))
+    fitInit = TRUE, option = list(grad = FALSE))
 
 tmp1 = fitNgarch11( x, init = tmp1$par, pop = 10,
-    stopLag = 1, minit = 100, maxit = 5e3, fitInit = T, opt = list(grad=TRUE))
+    stopLag = 1, minit = 100, maxit = 5e3, fitInit = T, opt = list( grad = FALSE ))
 
+basefit      = tmp1
 modInfo      = tmp1
 modInfo$freq = 1
 
-if ( TRUE )
+if ( FALSE )
 {
     modInfo$par[ "lambda", 1] = 0
     modInfo$par[ "a0"    , 1] = 0.30^2 / 365
@@ -36,7 +39,7 @@ if ( TRUE )
     modInfo$par[ "h1"    , 1] = 0.30^2 / 365
 }
 
-exDts = c( "2012-09-01", "2012-10-01" )
+
 prcs  = ngarch11prices( exDts, modInfo )
 vols1 = ngarch11vols( prcs, S0 = 100, strikes = c( 90, 95, 100, 105, 110 ))
 
@@ -46,10 +49,16 @@ modInfo$freq = 1
 prcs  = ngarch11prices( exDts, modInfo )
 vols2 = ngarch11vols( prcs, S0 = 100, strikes = c( 90, 95, 100, 105, 110 ))
 
-tmp2 = bootfitNgarch11( x, init = tmp1$par, pop = 10,
-    stopLag = 1, minit = 100, maxit = 5e3, fitInit = T, opt = list(grad=TRUE),
-    numBoots = 50 )
+bootfit = bootfitNgarch11( x, init = tmp1$par, pop = 10,
+    stopLag = 1, minit = 100, maxit = 5e3, fitInit = TRUE, opt = list( grad=FALSE ),
+    numBoots = 10 )
 
+bootfit$freq = 1
+
+##debug( ngarch11prices )
+
+bootPrcs = ngarch11prices( exDts, bootfit, paths = 1e5, boot = TRUE )
+bootVols = ngarch11vols( bootPrcs, S0 = 100, strikes = c( 90, 95, 100, 105, 110 ))
 
 ##tmp2 = wfitNgarch11(x, minit=100, pop=10,maxit = 5e3, tol = 1e-3,
 ##  fitInit=T, option=list(grad=T))

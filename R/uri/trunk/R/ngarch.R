@@ -37,7 +37,14 @@ bootfitNgarch11 = function(x, init = NULL, popSize = 5,
 
 simNgarch11 = function(n, paths = 1, pars, x0 = NULL, h0 = NULL, z = NULL)
 {
-    .Call("sim_ngarch11", n, paths, pars, x0, h0, z, PACKAGE = "uri")
+    .Call( "sim_ngarch11", n, paths, pars, x0, h0, z, PACKAGE = "uri")
+}
+
+
+
+bootsimNgarch11 = function( n, paths = 1, pars, x0 = NULL, h0 = NULL, z = NULL )
+{
+    .Call( "sim_ngarch11_2", n, paths, pars, x0, h0, z, PACKAGE = "uri" )
 }
 
 
@@ -55,86 +62,99 @@ ngarch11prices = function(exDts, modelInfo,
     ## q is a cts dividend yield.  qsd is the standard
     ## deviation of q as a truncated normal RV.
 {
-    
     S0 = 1
   
-    if (any(is.null(modelInfo$par),
-            is.null(modelInfo$res),
-            boot & is.null(modelInfo$bootPar),
-            is.null(modelInfo$freq)))
-        stop ("incomplete NGARCH(1, 1) model info given")
+    if ( any( is.null( modelInfo$par ),
+             is.null( modelInfo$res ),
+             boot & is.null( modelInfo$bootPar ),
+             is.null( modelInfo$freq )))
+        stop( "incomplete NGARCH(1, 1) model info given" )
 
     ## Get time to expiration
-    t0   = strptime(as.char(Sys.time()), format = "%Y-%m-%d %H:%M:%S")
-    tau  = as.double(as.POSIXlt(exDts) - t0)
-    names(tau) = names(exDts)
-    tau  = tau[tau > 0]
+    t0   = strptime( as.char( Sys.time()), format = "%Y-%m-%d %H:%M:%S" )
+    tau  = as.double( as.POSIXlt( exDts ) - t0 )
+    names(tau) = names( exDts )
+    tau  = tau[ tau > 0 ]
     freq = modelInfo$freq # Frequency in days
-    tau  = sort(tau) / freq
+    tau  = sort( tau ) / freq
 
     tauInt  = trunc(tau)
     tauFrac = tau - tauInt
 
-    m = length(tau)
-    n = ceiling(max(tau))
+    m = length( tau )
+    n = ceiling( max( tau ))
 
     ## Simulate terminal prices
-    N = ceiling(paths / nrow(modelInfo$bootPar))
 
-    if (boot)
+
+    
+    if ( boot )
     {
-        lambda = rep(modelInfo$bootPar$lambda, N)[1:paths]
-        a0     = rep(modelInfo$bootPar$a0,     N)[1:paths] 
-        a1     = rep(modelInfo$bootPar$a1,     N)[1:paths] 
-        b1     = rep(modelInfo$bootPar$b1,     N)[1:paths] 
-        gamma  = rep(modelInfo$bootPar$gamma,  N)[1:paths]
-        h0     = rep(modelInfo$bootPar$h,      N)[1:paths]
+        N                    = ceiling( paths / ncol( modelInfo$bootPar ))        
+
+        bootPars             = matrix(
+            rep( modelInfo$bootPar, N * ncol( modelInfo$bootPar )),
+            nrow( modelInfo$bootPar ),
+            N * ncol( modelInfo$bootPar ))
+        
+        bootPars             = bootPars[, 1:paths ]
+        rownames( bootPars ) = rownames( modelInfo$bootPar )
+
+        h0 = modelInfo$bootVar[  nrow( modelInfo$bootVar ),  ]
+        x0 = modelInfo$bootPath[ nrow( modelInfo$bootPath ), ]
+        h0 = rep( h0, N )[ 1:paths ]
+        x0 = rep( x0, N )[ 1:paths ]
+        
+        if ( risk.neutral )
+        {
+            bootPars[ "gamma", ] = bootPars[ "gamma", ] + bootPars[ "lambda", ]
+            bootPars[ "lambda",] = 0
+        }
+
+        rsim = bootsimNgarch11( n = n, paths = paths, bootPars, z = modelInfo$res,
+            x0 = x0, h0 = h0 )$x        
     }
     else
     {
-        lambda = modelInfo$par["lambda", 1]
-        a0     = modelInfo$par["a0",     1]
-        a1     = modelInfo$par["a1",     1]
-        b1     = modelInfo$par["b1",     1]
-        gamma  = modelInfo$par["gamma",  1]
-        h0     = last(modelInfo$h)
+        lambda = modelInfo$par[ "lambda", 1 ]
+        a0     = modelInfo$par[ "a0",     1 ]
+        a1     = modelInfo$par[ "a1",     1 ]
+        b1     = modelInfo$par[ "b1",     1 ]
+        gamma  = modelInfo$par[ "gamma",  1 ]
+        h0     = last( modelInfo$h )
+        x0     = last( modelInfo$x )
+        
+        if ( risk.neutral )
+        {
+            gamma  = lambda + gamma
+            lambda = 0
+        }
+        
+        pars = list( lambda = lambda, a0 = a0, a1 = a1, b1 = b1, gamma = gamma)
+        
+        rsim = simNgarch11( n = n, paths = paths,
+            par = pars, z = modelInfo$res, x0 = x0, h0 = h0 )$x
     }
+    
+    rsim = rsim[, !is.na( rsim[ n, ] ), drop = FALSE ]        
+    r1   = apply( rsim, 2, cumsum )[ tauInt, , drop = FALSE ]
+    r2   = rsim[ tauInt + 1, , drop = FALSE ]
+    mr2  = apply( r2, 1, mean)
+    r2   = ( r2 - mr2 ) * sqrt( tauFrac ) + mr2 * tauFrac
+    S    = exp( r1 + r2 )
 
-    x0 = last(modelInfo$x)
-  
-    if (risk.neutral)
-    {
-        gamma  = lambda + gamma
-        lambda = 0
-    }
-
-    pars = list(lambda=lambda,a0=a0,a1=a1,b1=b1,gamma=gamma)
-  
-    rsim = simNgarch11(n = n, paths = paths,
-        par = pars, z  = modelInfo$res, x0 = x0, h0 = h0)$x
-  
-    rsim = rsim[, !is.na(rsim[n, ]), drop = FALSE]
-
-  
-    r1  = apply(rsim, 2, cumsum)[tauInt, , drop = FALSE]
-    r2  = rsim[tauInt + 1, , drop = FALSE]
-    mr2 = apply(r2, 1, mean)
-    r2  = (r2 - mr2) * sqrt(tauFrac) + mr2 * tauFrac
-  
-    S   = exp(r1 + r2)
-
-    if (risk.neutral)
-        S = S / apply(S, 1, mean) * exp(tau * (r - q) / 365 * freq)
+    if ( risk.neutral )
+        S = S / apply( S, 1, mean ) * exp( tau * (r - q) / 365 * freq )
     else
-        S = S * exp(-tau * q / 365 * freq)
+        S = S * exp( -tau * q / 365 * freq )
  
     gc()
 
-    stopifnot (nrow(S) == m)
+    stopifnot( nrow( S ) == m )
    
     rownames(S) = names(tau)
 
-    list(S = t(S), tau = tau * freq, freq = freq, r = r, q = q, t0 = t0)
+    list( S = t(S), tau = tau * freq, freq = freq, r = r, q = q, t0 = t0 )
 }
 
 
