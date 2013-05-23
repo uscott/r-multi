@@ -31,54 +31,87 @@ void bs0(const double T, const double S, const double K,
     double callval, a, b;
     double d1, d2;
 
-    a = 1.0 + ('s' == opt);
-    d1 = (log(S/K)+(r-q+0.5*DSQR(vol))*T) / (vol*sqrt(T));
+    a  = 1.0 + ('s' == opt);
+    d1 = ( log( S / K ) + ( r - q + 0.5 * vol * vol ) * T) 
+        / ( vol * sqrt( T ));
     d2 = d1 - vol*sqrt(T);
 
-    opt = tolower(opt);
-    ret = tolower(ret);
+    opt = tolower( opt );
+    ret = tolower( ret );
 
     if (!ans)
         error ("Illegal null pointer passed");
   
     *ans = NA_REAL;
 
-    ok = S >= 0 && K >= 0 && R_FINITE(q) &&
-        vol >= 0 && R_FINITE(T) && R_FINITE(S) && 
-        R_FINITE(K) && R_FINITE(vol) && R_FINITE(r) && T >= 0.0;
+    ok = S >= 0 && K >= 0 && R_FINITE( q ) &&
+        vol >= 0 && R_FINITE( T ) && R_FINITE( S ) && 
+        R_FINITE( K ) && R_FINITE( vol ) && R_FINITE( r ) && T >= 0.0;
     
-    if (!ok)
+    if ( !ok )
         return;
 
     switch(ret) 
     {
         case 'p':
-            callval = (0.0 == T) ? DMAX(S-K,0) : exp(-q*T)*S*NORM_DIST(d1)-exp(-r*T)*K*NORM_DIST(d2);
-            b = ('p' == opt) ? -exp(-q*T)*S + exp(-r*T)*K : 0.0;
+
+            if( 0.0 < T )
+                *ans = exp(-q*T)*S*NORM_DIST(d1)-exp(-r*T)*K*NORM_DIST(d2);
+            else
+                *ans = DMAX( S - K, 0 );
+
+            if( opt == 'p' )
+                *ans -= exp( -q * T ) * S - exp( -r * T ) * K;
+            else if( opt == 's' )
+            {
+                *ans *= 2.0;
+                *ans -= exp( -q * T ) * S - exp( -r * T ) * K;                
+            }
             break;
 
         case 'd':
-            callval = (0.0 == T) ? (S > K ? 1.0 : 0.0) : exp(-q*T)*NORM_DIST(d1);
-            b = ('p' == opt) ? -exp(-q*T) : 0.0;
+            if( 0.0 < T )
+                *ans = exp( -q * T ) * NORM_DIST( d1 );
+            else
+                *ans = ( S > K ? 1.0 : 0.0 );
+            
+            if( opt == 'p' )
+                *ans -= exp( -q * T );
+            else if( opt == 's' )
+            {
+                *ans *= 2.0;
+                *ans -= exp( -q * T );                
+            }
             break;
 
         case 'v':
-            callval = (0.0 == T) ? 0.0 : exp(-q*T)*S*sqrt(T)*NORM_DENS(d1);
-            b = 0.0;
+
+            if( 0.0 < T )
+                *ans = exp( -q * T )* S * sqrt( T ) * NORM_DENS( d1 );
+            else
+                *ans = 0.0;            
+
+            if( opt == 's' ) 
+                *ans *= 2.0;            
+
             break;
 
         case 'g':
-            callval = (0.0==T)?(exp(-q*T)*S==exp(-r*T)*K?R_PosInf:0.0):exp(-q*T)*NORM_DENS(d1)/(S*vol*sqrt(T));
-            b = 0.0;
+            
+            if( 0.0 < T )
+                *ans = exp( -q * T ) * NORM_DENS( d1 ) / (S*vol*sqrt(T));
+            else
+                *ans = S == K ? R_PosInf : 0.0;
+            
+            if( opt == 's' ) 
+                *ans *= 2.0;            
+
             break;
 
         default:
-            callval = b = NA_REAL;
+            *ans = NA_REAL;
             break;
     }
-
-    *ans = a*callval + b;
-
 }
 
 
@@ -161,15 +194,15 @@ SEXP bs(SEXP tau, SEXP S, SEXP K, SEXP vol, SEXP r, SEXP q, SEXP opt, SEXP ret)
                  /* *CHAR(GET_ELT(opt, i)), *CHAR(GET_ELT(ret, j)), */
                  ARRAY2( ans_matrix )[ i ] + j );
 
-    PROT2(ans = carray_to_sexp(ans_matrix), numprot);
-    PROT2(dimnames = NEW_LIST(2), numprot);
+    PROT2( ans = carray_to_sexp( ans_matrix ), numprot );
+    PROT2( dimnames = NEW_LIST( 2 ), numprot );
   
-    SET_ELT(dimnames, 0, GET_NAMES(tau));
-    SET_ELT(dimnames, 1, ret);
+    SET_ELT( dimnames, 0, GET_NAMES( tau ) );
+    SET_ELT( dimnames, 1, ret );
 
-    setAttrib(ans, R_DimNamesSymbol, dimnames);
+    setAttrib( ans, R_DimNamesSymbol, dimnames );
 
-    UNPROTECT(numprot);
+    UNPROTECT( numprot );
 
     return ans;
 }
