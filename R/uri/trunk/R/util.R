@@ -1,63 +1,60 @@
 
 
+
 fillNAfwd = function(x)
 {
-
-    .Call("fillNAfwd", x, PACKAGE = "uri")
-
+    .Call( "fillNAfwd", x, PACKAGE = "uri" )
 }
+
+
 
 fillNAbkwd = function(x)
 {
-
     .Call("fillNAbkwd", x, PACKAGE = "uri")
-    
 }
+
+
 
 summary2 = function(x, maxCols = 100)
 {
 
-    if (is.matrix(x) | is.data.frame(x)) {
-
-        if (ncol(x) > maxCols) {
-
-            x = x[, 1:maxCols]
+    if (is.matrix( x ) | is.data.frame( x ))
+    {
+        if ( ncol(x) > maxCols )
+        {
+            x = x[ , 1 : maxCols ]
 
             warning("Only displaying some columns")
-        }
-        
+        }        
     }
 
     summary(x)
-
 }
 
 
 
-segment = function(x, b, e = 0) {
-
+segment = function(x, b, e = 0)
+{
     isMatrixLike = is.matrix(x) | is.data.frame(x)
     
-    if (missing(e))
-        e = ifelse(isMatrixLike, nrow(x), length(x))
+    if ( missing( e ))
+        e = ifelse( isMatrixLike, nrow(x), length(x) )
     
-    if (isMatrixLike)
-        x[b:e, , drop = FALSE]
+    if ( isMatrixLike )
+        x[ b:e, , drop = FALSE ]
     else
-        x[b:e]
-
+        x[ b:e ]
 }
 
 
 
-lo = function(n = 10) {
-    
-    z = sapply(ls(".GlobalEnv"), function(x) object.size(get(x)))
+lo = function( n = 10 )
+{
+    z = sapply( ls(".GlobalEnv"), function(x) object.size(get(x)))
     
     ans = as.matrix(rev(sort(z))[1:n])
     colnames(ans) = "bytes"
-    ans[which.not.na(ans[,"bytes"]), , drop = FALSE]
-    
+    ans[which.not.na(ans[,"bytes"]), , drop = FALSE]    
 }
 
 
@@ -79,14 +76,18 @@ permTest = function(x, y, f = mean, R = 2e3 - 1, loop = FALSE)
     x  = c(x, y)
     s  = rep(NA, R)
 
-    if (loop) {
-        for (b in seq(R)) {
+    if (loop)
+    {
+        for (b in seq(R))
+        {
 
             x    = sample(x)
             s[b] = f(x[1:nx]) - f(x[1:ny + nx])
             
         }
-    } else {
+    }
+    else
+    {
 
         g = function(n) sample(x)
         x = sapply(seq(R), g)
@@ -214,19 +215,17 @@ wtstat = function(model, method = 1)
 
 lm.se.boot = function(model, R = 2e3)
 {
-
-    n    = nrow(model$x)
+    n    = nrow( model$x )
     x    = model$x
     yhat = model$fit
     u    = model$res
-    p    = length(model$coef)
+    p    = length( model$coef )
     
     coef.boot = matrix(NA, R, p)
 
-    for (b in seq(R)) {
-
-        coef.boot[b, ] = lm(yhat + sample(u, rep = TRUE) ~ 0 + x)$coef
-        
+    for (b in seq( R ))
+    {
+        coef.boot[ b, ] = lm( yhat + sample( u, rep = TRUE) ~ 0 + x)$coef
     }
 
     apply(coef.boot, 2, sd)
@@ -265,7 +264,6 @@ read.yahoo = function(file)
     ans$lreturn = c(NA, diff(ans$lclose))
     ans$t       = difftime.uri(row.names(ans), "2000-01-01")
     ans$dt      = ans$t - lag2(ans$t, 1)
-    
     
     ans
 }
@@ -345,7 +343,8 @@ exDatesEquities = function(mth, yr, exp.hr = 16, exp.min = 30)
     dts[ix] = knownExpDts[knownMths %in% dts]
     friFound[ix] = TRUE
     
-    repeat {
+    repeat
+    {
 
         ind = which("Fri" == as.char(weekdays(dts)) & !friFound)
 
