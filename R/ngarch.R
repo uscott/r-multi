@@ -12,6 +12,7 @@ evalNgarch11 = function(x, pars, llonly = FALSE)
 }
 
 
+
 fitNgarch11 = function( x, init = NULL, popSize = 5,
     stopLags = 5, minit = 5, maxit = 10,
     tol = 1e-5, fitInit = FALSE, option = NULL)
@@ -85,14 +86,12 @@ ngarch11prices = function(exDts, modelInfo,
     n = ceiling( max( tau ))
 
     ## Simulate terminal prices
-
-
     
     if ( boot )
     {
-        N                    = ceiling( paths / ncol( modelInfo$bootPar ))        
+        N        = ceiling( paths / ncol( modelInfo$bootPar ))
 
-        bootPars             = matrix(
+        bootPars = matrix(
             rep( modelInfo$bootPar, N * ncol( modelInfo$bootPar )),
             nrow( modelInfo$bootPar ),
             N * ncol( modelInfo$bootPar ))
@@ -167,49 +166,54 @@ ngarch11vols = function(distInfo,  S0 =  1, strikes)
     ## NGARCH(1, 1) model.
     ##
 {
-    S    = t(distInfo$S) * S0
+    S    = t( distInfo$S ) * S0
     tau  = distInfo$tau
     freq = distInfo$freq
     t0   = distInfo$t0
     r    = distInfo$r
     q    = distInfo$q
   
-    stopifnot (is.matrix(S)&is.vector(tau)&is.double(freq)&is.double(S0))
-    stopifnot (all(tau > 0, freq > 0, S0 > 0))
-    stopifnot (all(length(strikes), strikes > 0))
+    stopifnot(
+        is.matrix( S )   &
+        is.vector( tau ) &
+        is.double( freq )&
+        is.double( S0 ))
+    stopifnot( all(tau > 0, freq > 0, S0 > 0 ))
+    stopifnot( all(length(strikes), strikes > 0 ))
 
-    tau     = sort(tau)
-    m       = length(tau)
-    n       = ceiling(max(tau))
-    tauInt  = trunc(tau)
+    tau     = sort( tau )
+    m       = length( tau )
+    n       = ceiling( max( tau ))
+    tauInt  = trunc( tau )
     tauFrac = tau - tauInt
 
-    if (1 == length(r))
-        r = rep(r, m)
-    if (1 == length(q))
-        q = rep(q, m)
+    if ( 1 == length( r ))
+        r = rep( r, m )
+    if ( 1 == length( q ))
+        q = rep( q, m )
   
     rmq = r - q
 
     gc()
   
-    if (is.null(dim(S))) S = t(S)
+    if ( is.null( dim( S )))
+        S = t(S)
   
-    stopifnot (nrow(S) == m)
+    stopifnot( nrow( S ) == m )
   
-    mu  = apply(S, 1, mean) / S0
+    mu = apply( S, 1, mean ) / S0
+    K  = strikes
+    rm(strikes)
   
-    K = strikes; rm(strikes)
+    if( is.vector( K ))
+        K = matrix( K, m, length( K ), byrow = TRUE )
+    else if ( is.matrix( K ) & identical( 1 == nrow( K ), TRUE ))
+        K = matrix( as.vector( K ), m, ncol( K ), byrow = TRUE )
   
-    if (is.vector(K))
-        K = matrix(K, m, length(K), byrow = TRUE)
-    else if (is.matrix(K) & identical(1 == nrow(K), TRUE))
-        K = matrix(as.vector(K), m, ncol(K), byrow = TRUE)
-  
-    K = t(apply(K, 1, sort))
-    n = ncol(K)
+    K = t( apply( K, 1, sort ))
+    n = ncol( K )
 
-    stopifnot (is.matrix(K))
+    stopifnot( is.matrix( K ))
   
     calls  = matrix(NA, m, n)
     puts   = matrix(NA, m, n)
@@ -218,32 +222,27 @@ ngarch11vols = function(distInfo,  S0 =  1, strikes)
     gammas = matrix(NA, m, n)
     vols   = matrix(NA, m, n)
   
-    optTypes    = ifelse(K < S0, "p", "c")
-    cix         = (K >= S0)
-    pix         = (K <  S0)
-    payoffSigns = ifelse(K >= S0, 1, -1)
+    optTypes    = ifelse( K < S0, "p", "c")
+    cix         = ( K >= S0 )
+    pix         = ( K <  S0 )
+    payoffSigns = ifelse( K >= S0, 1, -1 )
 
-    u = 1e-2
-
+    u   = 1e-2
     tau = tau / 365.0
   
-    for (i in seq(m))
+    for( i in 1 : m )
     {
-        discFac    = exp(-r[i] * tau[i])
-        sgn        = matrix(payoffSigns[i,], ncol(S), n, byrow = TRUE)
-        
-        payoff     = pmax(sgn * outer(S[i,], K[i,], "-"), 0)
+        discFac    = exp( -r[ i ] * tau[ i ] )
+        sgn        = matrix( payoffSigns[ i, ], ncol(S), n, byrow = TRUE )        
+        payoff     = pmax( sgn * outer( S[ i, ], K[ i, ], "-" ), 0 )
+        prices[i,] = discFac * apply( payoff, 2, mean )
+        payoff2    = pmax( sgn * outer( (1 + u) * S[i,], K[i,], "-"), 0 )
+        payoff3    = pmax( sgn * outer( (1 - u) * S[i,], K[i,], "-"), 0 )
+        prices2    = discFac * apply( payoff2, 2, mean )
+        prices3    = discFac * apply( payoff3, 2, mean )
     
-        prices[i,] = discFac * apply(payoff, 2, mean)
-    
-        payoff2    = pmax(sgn * outer((1 + u) * S[i,], K[i,], "-"), 0)
-        payoff3    = pmax(sgn * outer((1 - u) * S[i,], K[i,], "-"), 0)
-        
-        prices2    = discFac * apply(payoff2, 2, mean)
-        prices3    = discFac * apply(payoff3, 2, mean)
-    
-        deltas[i,] = 100 * (prices2 - prices3) / (2 * u * S0) 
-        gammas[i,] = 100 * (prices2 - 2 * prices[i, ] + prices3) / (u * S0)^2
+        deltas[i,] = 100 * ( prices2 - prices3 ) / ( 2 * u * S0 ) 
+        gammas[i,] = 100 * ( prices2 - 2 * prices[ i, ] + prices3 ) / (u * S0)^2
 
         deltas[i,] = round(deltas[i,], 2)
         gammas[i,] = round(gammas[i,], 2)
@@ -255,94 +254,99 @@ ngarch11vols = function(distInfo,  S0 =  1, strikes)
         calls[i, ] = prices[i, ]
         puts [i, ] = prices[i, ]
 
-        parity = exp(-q[i]*tau[i])*S0 - discFac*K[i,]
+        parity = exp( -q[ i ] * tau[ i ] ) * S0 - discFac * K[i,]
     
-        calls[i,pix[i,]] = calls[i,pix[i,]] + parity[pix[i,]]
-        puts [i,cix[i,]] = puts [i,cix[i,]] - parity[cix[i,]]
-        
+        calls[ i, pix[ i, ]] = calls[ i, pix[ i,]] + parity[ pix[ i, ]]
+        puts [ i, cix[ i, ]] = puts [ i, cix[ i,]] - parity[ cix[ i, ]]        
     }
     
-    if (!is.null(names(tau)))
-        exp.names = names(tau)
-    else if (!is.null(rownames(K)))
-        exp.names = rownames(K)
+    if( !is.null( names( tau )))
+        exp.names = names( tau )
+    else if( !is.null( rownames( K )))
+        exp.names = rownames( K )
     else
-        exp.names = paste("expiration.date", seq(m), sep = "" )
+        exp.names = paste( "expi", 1 : m, sep = "" )
 
-    strike.names = paste(K, optTypes, sep = "")
+    strike.names = paste( K, optTypes, sep = "" )
     dim(strike.names) = dim(K)
     
-    rownames(prices)       = rownames(calls)    = rownames(puts) = exp.names
-    rownames(vols)         = rownames(optTypes) = rownames(pix)  = exp.names
-    rownames(deltas)       = rownames(gammas)   = rownames(S)    = exp.names
-    names(mu)              = rownames(K)        = names(q)       = exp.names
-    rownames(strike.names) = rownames(cix)      = names(r)       = exp.names
+    rownames( prices )       = rownames( calls )    = rownames( puts ) = exp.names
+    rownames( vols )         = rownames( optTypes ) = rownames( pix )  = exp.names
+    rownames( deltas )       = rownames( gammas )   = rownames( S )    = exp.names
+    names( mu )              = rownames( K )        = names( q )       = exp.names
+    rownames( strike.names ) = rownames( cix )      = names( r )       = exp.names
   
     ans = list()
-    for (i in exp.names)
-    {
-        ans[[i]] = matrix(NA, 8, n)
     
-        rownames(ans[[i]]) =
+    for( i in exp.names )
+    {
+        ans[[ i ]] = matrix(NA, 8, n)
+    
+        rownames(ans[[ i ]]) =
             c("calls", "puts", "calls.ratio",
               "puts.ratio", "vols", "call.delta", "put.delta", "gamma")
 
-        ans[[i]][1, ] = round(calls[i, ], 3)
-        ans[[i]][2, ] = round(puts [i, ], 3)
+        ans[[ i ]][ 1, ] = round(calls[ i, ], 3)
+        ans[[ i ]][ 2, ] = round(puts [ i, ], 3)
 
         atmix = which.min(abs(K[i, ] - S0))
     
         patm = puts [i, atmix]
         catm = calls[i, atmix]
 
-        ans[[i]][3, ] = round(catm / calls[i, ], 2)
-        ans[[i]][4, ] = round(patm / puts [i, ], 2)
-        ans[[i]][5, ] = round(vols[i, ], 2)
+        ans[[ i ]][ 3, ] = round(catm / calls[i, ], 2)
+        ans[[ i ]][ 4, ] = round(patm / puts [i, ], 2)
+        ans[[ i ]][ 5, ] = round(vols[ i, ], 2)
     
-        ans[[i]][6, ] = deltas[i, ] +
-            100 * ifelse(pix[i, ], rep(exp(-q[i] * tau[i]), n), rep(0, n))
+        ans[[ i ]][ 6, ] = deltas[ i, ] +
+            100 * ifelse(
+                      pix[ i, ],
+                      rep( exp( -q[ i ] * tau[ i ]), n ),
+                      rep( 0, n ))
     
-        ans[[i]][7, ] = deltas[i, ] -
-            100 * ifelse(cix[i, ], rep(exp(-q[i] * tau[i]), n), rep(0, n))
+        ans[[ i ]][ 7, ] = deltas[ i, ] -
+            100 * ifelse(
+                      cix[ i, ],
+                      rep( exp( -q[ i ] * tau[ i ]), n ),
+                      rep( 0, n ))
     
-        ans[[i]][8, ] = gammas[i, ]
+        ans[[ i ]][8, ] = gammas[i, ]
     
-        ans[[i]] = as.data.frame(t(ans[[i]]))
-        rownames(ans[[i]]) = K[i,]
-      
-  }
+        ans[[ i ]] = as.data.frame( t(ans[[ i ]]))
+        rownames( ans[[ i ]] ) = K[ i, ]
+    }
 
-    ans$vert.sprds = list()
+    ans$vert.sprds  = list()
     ans$cs = ans$ps = list()
   
-    for (i in exp.names)
-    {
+    for ( i in exp.names )
+    {        
+        ans$vert.sprds[[ i ]] =
+            round( outer( prices[ i, ], prices[ i, ], "-" ), 3 )
         
-        ans$vert.sprds[[i]] = round(outer(prices[i,], prices[i,], "-"), 3)
-        ans$cs[[i]] = round(outer(calls[i,],calls[i,],"-"), 3)
-        ans$ps[[i]] = round(outer(puts[i,],puts[i,],"-"), 3)
+        ans$cs[[ i ]] = round( outer( calls[ i, ], calls[ i,], "-"), 3 )
+        ans$ps[[ i ]] = round( outer( puts[  i, ], puts[  i,], "-"), 3 )
     
-        dimnames(ans$vert.sprds[[i]]) =
-            list(paste("+", strike.names[i,], sep = ""),
-                 paste("-", strike.names[i,], sep = ""))
+        dimnames( ans$vert.sprds[[ i ]] ) =
+            list( paste( "+", strike.names[ i, ], sep = "" ),
+                  paste( "-", strike.names[ i, ], sep = "" ))
 
-        dimnames(ans$cs[[i]]) = dimnames(ans$ps[[i]]) =
-            list(paste("+", K[i,], sep=""),
-                 paste("-", K[i,], sep=""))
-    
+        dimnames( ans$cs[[ i ]] ) = dimnames( ans$ps[[ i ]] ) =
+            list(paste( "+", K[ i, ], sep = "" ),
+                 paste( "-", K[ i, ], sep = "" ))    
     }
   
-    ans$prices       = drop(prices)
-    ans$vols         = drop(vols)
-    ans$deltas       = drop(deltas)
-    ans$mu           = drop(mu)
-    ans$disc.rates   = drop(r)
-    ans$div.yields   = drop(q)
-    ans$tau          = drop(tau)
-    ans$strikes      = drop(K)
-    ans$distribution = drop(S)
+    ans$prices       = drop( prices )
+    ans$vols         = drop( vols )
+    ans$deltas       = drop( deltas )
+    ans$mu           = drop( mu )
+    ans$disc.rates   = drop( r )
+    ans$div.yields   = drop( q )
+    ans$tau          = drop( tau )
+    ans$strikes      = drop( K )
+    ans$distribution = drop( S )
     ans$t0           = t0
     ans$S0           = S0
   
-    ans
+    return( ans )
 }
