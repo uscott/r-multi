@@ -8,7 +8,7 @@ evalNgarch11 = function(x, pars, llonly = FALSE)
     ##    time series x and parameters.
     ##
 {
-    .Call("ngarch11", x, pars, llonly, PACKAGE = "uri")
+    .Call( "ngarch11", x, pars, llonly, PACKAGE = "uri")
 }
 
 
@@ -72,8 +72,11 @@ ngarch11prices = function(exDts, modelInfo,
         stop( "incomplete NGARCH(1, 1) model info given" )
 
     ## Get time to expiration
-    t0   = strptime( as.char( Sys.time()), format = "%Y-%m-%d %H:%M:%S" )
-    tau  = as.double( as.POSIXlt( exDts ) - t0 )
+    ##t0   = strptime( as.char( Sys.time()), format = "%Y-%m-%d %H:%M:%S" )
+    ##tau  = as.double( as.POSIXlt( exDts ) - t0 )
+
+    t0   = as.POSIXct( Sys.time())
+    tau  = as.double( difftime( as.POSIXct( exDts ), t0, "days" ))
     names(tau) = names( exDts )
     tau  = tau[ tau > 0 ]
     freq = modelInfo$freq # Frequency in days
@@ -275,7 +278,9 @@ ngarch11vols = function(distInfo,  S0 =  1, strikes)
     rownames( deltas )       = rownames( gammas )   = rownames( S )    = exp.names
     names( mu )              = rownames( K )        = names( q )       = exp.names
     rownames( strike.names ) = rownames( cix )      = names( r )       = exp.names
-  
+    
+    colnames( prices ) = colnames( vols ) = colnames( deltas ) = K[ 1, ]
+    
     ans = list()
     
     for( i in exp.names )
@@ -349,4 +354,29 @@ ngarch11vols = function(distInfo,  S0 =  1, strikes)
     ans$S0           = S0
   
     return( ans )
+}
+
+
+fitNgarch11.b = function( x, init = NULL, popSize = 5,
+    stopLags = 5, minit = 5, maxit = 10,
+    tol = 1e-5, fitInit = FALSE, option = NULL)
+{
+    .Call(
+        "fit_ngarch11_B",
+        x,
+        init,
+        fitInit,
+        popSize,
+        tol,
+        stopLags,
+        minit,
+        maxit,
+        option,
+        PACKAGE = "uri" )
+}
+
+
+simNgarch11.b = function(n, paths = 1, pars, x0 = NULL, h0 = NULL, z = NULL)
+{
+    .Call( "sim_ngarch11_B", n, paths, pars, x0, h0, z, PACKAGE = "uri")
 }

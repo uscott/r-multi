@@ -1,71 +1,120 @@
+###############################################################################
+# Load Systematic Investor Toolbox (SIT)
+# http://systematicinvestor.wordpress.com/systematic-investor-toolbox/
+###############################################################################
+setInternet2(TRUE)
+con = gzcon(url('http://www.systematicportfolio.com/sit.gz', 'rb'))
+source(con)
+close(con)
+
+
 library( uri )
 
-qqq = read.csv( "QQQ.csv" )
-len = nrow(qqq)
-
-qqq = qqq[ ( len - 1*252 ):len, ]
-x   = qqq$Return
-
-plot( exp( diffinv( x )))
-
-tmp1 = fitNgarch11( x, stopLag = 50, maxit = 5e3, tol = 1e-3,
-    fitInit = TRUE, option = list( grad = TRUE ))
-
-tmp1 = fitNgarch11( x, init = tmp1$par, pop = 10,
-    stopLag = 1, minit = 100, maxit = 5e3, fitInit = TRUE,
-    opt = list( grad  = TRUE ))
-
-tmp2 = bootfitNgarch11( x, init = tmp1$par, pop = 10,
-    stopLag = 1, minit = 500, maxit = 5e3, fitInit = TRUE,
-    opt = list( grad = FALSE ),
-    numBoots = 19 )
-
-indices = which( tmp2$bootPar["a1",] < 0 | tmp2$bootPar["b1",] < 0 )
-
-tmp2$bootPar   = tmp2$bootPar[,-indices]
-tmp2$bootVar   = tmp2$bootVar[,-indices]
-tmp2$bootRes   = tmp2$bootRes[,-indices]
-tmp2$bootPaths = tmp2$bootPaths[,-indices]
-
-tmp1$freq = 1
-tmp2$freq = 1
-
-modInfo      = tmp1
-modInfo$freq = 1
-
-exDts = c( "2013-01-18", "2013-02-15", "2013-03-15")
-
-prcs  = ngarch11prices( exDts, modInfo, paths = 20e3 )
-prcs1 = prcs
-
-bootPrcs =  ngarch11prices( exDts, tmp2, paths = 50e3 )
-bootPrcs1 = bootPrcs
-
-divd    = 0*.24
-strikes = 64:66
-
-S0        = 64.805 - divd + 0*qqq[ nrow(qqq), "Adj.Close" ]
-vols1     = ngarch11vols( prcs1, S0 = S0, strikes = strikes)
-bootVols1 = ngarch11vols( bootPrcs1, S0 = S0, strikes = strikes )
-
-atmVol = .145
-a0     = modInfo$par["a0",1]
-h1     = modInfo$par["h1",1]
-a0     = a0 * atmVol^2 / vols1$expiration.date1["69","vols"]^2
-h1     = h1 * atmVol^2 / vols1$expiration.date1["69","vols"]^2
-modInfo$par["a0",1] = a0
-modInfo$par["h1",1] = h1
-
-a0     = tmp2$bootPar["a0",]
-h1     = tmp2$bootPar["h1",]
-a0     = a0 * atmVol^2 / bootVols1$expiration.date1["69","vols"]^2
-h1     = h1 * atmVol^2 / bootVols1$expiration.date1["69","vols"]^2
-tmp2$bootPar["a0",] = a0
-tmp2$bootPar["h1",] = h1
+##*****************************************************************
+##Load historical data
+##****************************************************************** 
+load.packages( 'quantmod' )	
 
 
-prcs2 = ngarch11prices( exDts, modInfo, paths = 20e3 )
-vols2 = ngarch11vols( prcs2, S0 = S0,strikes = strikes)
+from.date = '2006-01-01'
 
-bootPrcs2 =  ngarch11prices( exDts, tmp2, paths = 50e3 )
-bootVols2 =  ngarch11vols( bootPrcs2, S0 = S0, strikes = strikes )
+tickers   = c( "SPY", "QQQ", "GLD" )
+data      = new.env()
+
+getSymbols( tickers,
+           src         = 'yahoo',
+           from        = from.date,
+           env         = data,
+           auto.assign = TRUE )
+
+for( i in ls( data ))
+    data[[ i ]] = adjustOHLC( data[[ i ]], use.Adjusted = TRUE )		
+
+bt.prep( data, align = 'keep.all', dates = '1991::')
+
+prices  = matrix( NA, nrow( data[[ tickers[1] ]] ), length( tickers ))
+
+for( j in 1:length( tickers ))
+    prices[, j] = data[[ tickers[j] ]][,6]
+
+colnames( prices ) = tickers
+
+dates = as.POSIXct( data[[ "dates" ]] )
+
+## Remove NAs
+tmp       = apply( prices, 1, sum )
+indx.omit = which( is.na( tmp ))
+
+if( length( indx.omit ))
+{
+    prices = prices[ -indx.omit, ]
+    dates  = dates[ -indx.omit ]
+}
+
+## Get returns
+returns  = matrix( NA, nrow( prices ) - 1, ncol( prices ))
+daysdiff = as.numeric( diff( dates ))
+for( j in 1 : ncol( prices ))
+{
+    tmp            = prices[ , j ]
+    returns[ , j ] = log( tmp[ -1 ] / tmp[ -length( tmp ) ] ) / sqrt( daysdiff )
+}
+
+window.size = 252*2
+indx.include = nrow( returns ) - seq( window.size - 1, 0 )
+
+returns = returns[ indx.include, ]
+
+fits = list()
+
+for( j in 1:ncol( returns ))
+{
+    fits[[ j ]] = fitNgarch11.b( returns[ , j ], 
+            stopLag = 50, minit = 100, maxit = 5e4, fitInit = TRUE,
+            opt = list( grad = TRUE ))
+
+    fits[[ j ]]$par = fits[[ j ]]$par[ 1:4 ]
+    
+    fits[[ j ]] = fitNgarch11.b( returns[ , j ], init = fits[[ j ]]$par,
+            pop = 10,
+            stopLag = 1, minit = 100, maxit = 5e3, fitInit = TRUE,
+            opt = list( grad = TRUE ))
+
+    fits[[ j ]]$par = fits[[ j ]]$par[ 1:4 ]
+    
+    fits[[ j ]]$par = as.matrix( c( 0, fits[[ j ]]$par ))
+
+    row.names( fits[[ j ]]$par ) = c( "lambda", "a0", "a1", "b1", "gamma" )
+}
+
+names( fits ) = tickers
+
+exDts = c(
+    "2013-08-09 20:00:00 GMT",
+    "2013-08-16 20:00:00 GMT",
+    "2013-08-23 20:00:00 GMT",
+    "2013-12-31 20:00:00 GMT" )
+dists = list()
+
+for( j in 1:length(fits))
+{
+    fits[[ tickers[ j ]]]$freq = 1
+    
+    dists[[ j ]] = ngarch11prices( exDts, fits[[ j ]], paths = 100e3 )
+}
+
+
+current.price = c( 169.97, 76.77, 126.84 )
+strikes = t(round( current.price * 2, 0 ) / 2 + t(cbind( -6:6, -6:6, -6:6 ) / 2 ))
+vols = list()
+
+for( j in 1:length(fits))
+{
+    vols[[ j ]] = ngarch11vols(
+            dists[[ j ]],
+            S0 = current.price[j],
+            strikes = strikes[,j] )    
+}
+
+
+
