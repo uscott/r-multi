@@ -50,8 +50,12 @@ bootsimNgarch11 = function( n, paths = 1, pars, x0 = NULL, h0 = NULL, z = NULL )
 
 
 
-ngarch11prices = function(exDts, modelInfo,
-    paths = 1e4, r = 0, q = 0,
+get.dist.ng11 = function(
+    exp.dts,
+    modelInfo,
+    paths = 1e4,
+    r = 0, ## discount rates
+    q = 0, ## dividend yields
     rsd = 0, ## Not implemented
     qsd = 0, ## Not implemented
     div = NULL, boot = FALSE, risk.neutral = TRUE)
@@ -71,18 +75,16 @@ ngarch11prices = function(exDts, modelInfo,
              is.null( modelInfo$freq )))
         stop( "incomplete NGARCH(1, 1) model info given" )
 
-    ## Get time to expiration
-    ##t0   = strptime( as.char( Sys.time()), format = "%Y-%m-%d %H:%M:%S" )
-    ##tau  = as.double( as.POSIXlt( exDts ) - t0 )
-
     t0   = as.POSIXct( Sys.time())
-    tau  = as.double( difftime( as.POSIXct( exDts ), t0, "days" ))
-    names(tau) = names( exDts )
+    tau  = as.double( difftime( as.POSIXct( exp.dts ), t0, "days" ))
+    
+    names(tau) = names( exp.dts )
+    
     tau  = tau[ tau > 0 ]
     freq = modelInfo$freq # Frequency in days
     tau  = sort( tau ) / freq
 
-    tauInt  = trunc(tau)
+    tauInt  = trunc( tau )
     tauFrac = tau - tauInt
 
     m = length( tau )
@@ -150,18 +152,28 @@ ngarch11prices = function(exDts, modelInfo,
     else
         S = S * exp( -tau * q / 365 * freq )
  
-    gc()
-
     stopifnot( nrow( S ) == m )
    
-    rownames(S) = names(tau)
+    rownames( S ) = names( tau )
 
-    list( S = t(S), tau = tau * freq, freq = freq, r = r, q = q, t0 = t0 )
+    retval = list(
+        S       = t(S),
+        tau     = tau * freq,
+        freq    = freq,
+        r       = r,
+        q       = q,
+        t0      = t0,
+        exp.dts = exp.dts )
+
+    return( retval )
 }
 
 
 
-ngarch11vols = function(distInfo,  S0 =  1, strikes)
+get.vols.ng11 = function(
+    distInfo,
+    underlying =  1,
+    strikes )
     ## Function for pricing options.
     ## distInfo is a list of length 2 containing
     ## the physical terminal distribution and the corresponding
@@ -169,6 +181,7 @@ ngarch11vols = function(distInfo,  S0 =  1, strikes)
     ## NGARCH(1, 1) model.
     ##
 {
+    S0   = underlying
     S    = t( distInfo$S ) * S0
     tau  = distInfo$tau
     freq = distInfo$freq
@@ -181,8 +194,9 @@ ngarch11vols = function(distInfo,  S0 =  1, strikes)
         is.vector( tau ) &
         is.double( freq )&
         is.double( S0 ))
-    stopifnot( all(tau > 0, freq > 0, S0 > 0 ))
-    stopifnot( all(length(strikes), strikes > 0 ))
+
+    stopifnot( all( tau > 0, freq > 0, S0 > 0 ))
+    stopifnot( all( length(strikes), strikes > 0 ))
 
     tau     = sort( tau )
     m       = length( tau )
@@ -197,8 +211,6 @@ ngarch11vols = function(distInfo,  S0 =  1, strikes)
   
     rmq = r - q
 
-    gc()
-  
     if ( is.null( dim( S )))
         S = t(S)
   
@@ -218,12 +230,12 @@ ngarch11vols = function(distInfo,  S0 =  1, strikes)
 
     stopifnot( is.matrix( K ))
   
-    calls  = matrix(NA, m, n)
-    puts   = matrix(NA, m, n)
-    prices = matrix(NA, m, n)
-    deltas = matrix(NA, m, n)
-    gammas = matrix(NA, m, n)
-    vols   = matrix(NA, m, n)
+    calls  = matrix( NA, m, n )
+    puts   = matrix( NA, m, n )
+    prices = matrix( NA, m, n )
+    deltas = matrix( NA, m, n )
+    gammas = matrix( NA, m, n )
+    vols   = matrix( NA, m, n )
   
     optTypes    = ifelse( K < S0, "p", "c")
     cix         = ( K >= S0 )
@@ -247,15 +259,16 @@ ngarch11vols = function(distInfo,  S0 =  1, strikes)
         deltas[i,] = 100 * ( prices2 - prices3 ) / ( 2 * u * S0 ) 
         gammas[i,] = 100 * ( prices2 - 2 * prices[ i, ] + prices3 ) / (u * S0)^2
 
-        deltas[i,] = round(deltas[i,], 2)
-        gammas[i,] = round(gammas[i,], 2)
+        deltas[i,] = round( deltas[ i, ], 2 )
+        gammas[i,] = round( gammas[ i, ], 2 )
 
-        vols[i,]   = impvol(365 * tau[i], S0, K[i, ],
-                price = prices[i, ], r = r[i], q = q[i],
-                opt = optTypes[i, ], tol = 1e-7, maxit = 1e2)
+        vols[i,]   = impvol(
+                365 * tau[i], S0, K[ i, ],
+                price = prices[ i, ],     r = r[i], q     = q[ i ],
+                opt   = optTypes[ i, ], tol = 1e-7, maxit = 1e3 )
 
-        calls[i, ] = prices[i, ]
-        puts [i, ] = prices[i, ]
+        calls[ i, ] = prices[ i, ]
+        puts [ i, ] = prices[ i, ]
 
         parity = exp( -q[ i ] * tau[ i ] ) * S0 - discFac * K[i,]
     
@@ -285,23 +298,23 @@ ngarch11vols = function(distInfo,  S0 =  1, strikes)
     
     for( i in exp.names )
     {
-        ans[[ i ]] = matrix(NA, 8, n)
+        ans[[ i ]] = matrix( NA, 8, n )
     
         rownames(ans[[ i ]]) =
             c("calls", "puts", "calls.ratio",
               "puts.ratio", "vols", "call.delta", "put.delta", "gamma")
 
-        ans[[ i ]][ 1, ] = round(calls[ i, ], 3)
-        ans[[ i ]][ 2, ] = round(puts [ i, ], 3)
+        ans[[ i ]][ 1, ] = round( calls[ i, ], 3 )
+        ans[[ i ]][ 2, ] = round( puts [ i, ], 3 )
 
-        atmix = which.min(abs(K[i, ] - S0))
+        atmix = which.min( abs( K[ i, ] - S0 ))
     
-        patm = puts [i, atmix]
-        catm = calls[i, atmix]
+        patm = puts [ i, atmix ]
+        catm = calls[ i, atmix ]
 
-        ans[[ i ]][ 3, ] = round(catm / calls[i, ], 2)
-        ans[[ i ]][ 4, ] = round(patm / puts [i, ], 2)
-        ans[[ i ]][ 5, ] = round(vols[ i, ], 2)
+        ans[[ i ]][ 3, ] = round( catm / calls[i, ], 3 )
+        ans[[ i ]][ 4, ] = round( patm / puts [i, ], 3 )
+        ans[[ i ]][ 5, ] = round( vols[ i, ], 3 )
     
         ans[[ i ]][ 6, ] = deltas[ i, ] +
             100 * ifelse(
@@ -315,9 +328,10 @@ ngarch11vols = function(distInfo,  S0 =  1, strikes)
                       rep( exp( -q[ i ] * tau[ i ]), n ),
                       rep( 0, n ))
     
-        ans[[ i ]][8, ] = gammas[i, ]
+        ans[[ i ]][ 8, ] = gammas[ i, ]
     
-        ans[[ i ]] = as.data.frame( t(ans[[ i ]]))
+        ans[[ i ]] = as.data.frame( t( ans[[ i ]] ))
+        
         rownames( ans[[ i ]] ) = K[ i, ]
     }
 
@@ -347,12 +361,13 @@ ngarch11vols = function(distInfo,  S0 =  1, strikes)
     ans$mu           = drop( mu )
     ans$disc.rates   = drop( r )
     ans$div.yields   = drop( q )
-    ans$tau          = drop( tau )
+    ans$tau          = drop( tau ) * 365
     ans$strikes      = drop( K )
     ans$distribution = drop( S )
     ans$t0           = t0
-    ans$S0           = S0
-  
+    ans$underlying   = S0
+    ans$exp.dts      = distInfo$exp.dts
+    
     return( ans )
 }
 
