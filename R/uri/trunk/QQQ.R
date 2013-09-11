@@ -14,7 +14,8 @@ library( uri )
 ##****************************************************************** 
 load.packages( 'quantmod' )	
 
-run.ngarch = function( data, tickers, from.date, window.size = 252*2 )
+
+get.price.data = function( data, tickers, from.date )
 {
     getSymbols( tickers,
                src         = 'yahoo',
@@ -22,11 +23,21 @@ run.ngarch = function( data, tickers, from.date, window.size = 252*2 )
                env         = data,
                auto.assign = TRUE )
 
-    for( i in ls( data ))
+    for( i in tickers )
         data[[ i ]] = adjustOHLC( data[[ i ]], use.Adjusted = TRUE )		
 
     bt.prep( data, align = 'keep.all', dates = '1991::')
+}
 
+
+
+run.ngarch = function(
+    data,
+    tickers,
+    window.size = 252*2,
+    last.prices = NULL,
+    last.date   = Sys.time() )
+{
     prices  = matrix( NA, nrow( data[[ tickers[1] ]] ), length( tickers ))
 
     for( j in 1:length( tickers ))
@@ -34,44 +45,52 @@ run.ngarch = function( data, tickers, from.date, window.size = 252*2 )
 
     colnames( prices ) = tickers
 
-    dates = as.POSIXct( data[[ "dates" ]] )
-
-    ## Remove NAs
-    tmp       = apply( prices, 1, sum )
-    indx.omit = which( is.na( tmp ))
-
-    if( length( indx.omit ))
+    dates = as.POSIXct( paste( data[[ "dates" ]], "20:00 GMT" ))
+    
+    if( !is.null( last.prices ))
     {
-        prices = prices[ -indx.omit, ]
-        dates  = dates[ -indx.omit ]
+        prices = rbind( prices, last.prices )
+        dates  = c( dates, as.POSIXct( last.date ))
     }
-
+    
+    
     ## Get returns
     returns  = matrix( NA, nrow( prices ) - 1, ncol( prices ))
-    daysdiff = as.numeric( diff( dates ))
+    daysdiff = as.numeric(
+        difftime( dates[ -1 ], dates[ -length( dates )], unit = "days" ))
+    
     for( j in 1 : ncol( prices ))
-    {
-        tmp            = prices[ , j ]
-        returns[ , j ] = log( tmp[ -1 ] / tmp[ -length( tmp ) ] ) / sqrt( daysdiff )
-    }
+        returns[ , j ] = diff( log( prices[ , j ] )) / sqrt( daysdiff )
 
+    window.size  = min( window.size, nrow( returns ))
     indx.include = nrow( returns ) - seq( window.size - 1, 0 )
 
     returns = returns[ indx.include, ]
 
-    fits = list()
+    if( is.null( data[[ "fits" ]] ))
+        fits = list()
+    else
+        fits = data[[ "fits" ]]
 
     for( j in 1:ncol( returns ))
     {
-        fits[[ j ]] = fitNgarch11.b( returns[ , j ], #init = fits2[[j]]$par[-1],
+        x = returns[ , j ]
+        x = x[ !is.na( x ) ]
+        
+        fits[[ tickers[ j ]]] = fitNgarch11.b(
+                x,
+                init = c( var( x ), runif( 3, 0, 1e-4 )),
                 stopLag = 50, minit = 100, maxit = 5e4, fitInit = TRUE,
                 opt = list( grad = TRUE ))
 
-        fits[[ j ]]$par = fits[[ j ]]$par[ 1:4 ]
+        fits[[ tickers[ j ]]]$par = fits[[ j ]]$par[ 1:4 ]
     
-        fits[[ j ]] = fitNgarch11.b( returns[ , j ], init = fits[[ j ]]$par,
+        fits[[ tickers[ j ]]] = fitNgarch11.b(
+                x,
+                init = fits[[ j ]]$par,
                 pop = 10,
-                stopLag = 1, minit = 100, maxit = 5e3, fitInit = TRUE,
+                stopLag = 1, minit = 100,
+                maxit = 5e3, fitInit = TRUE,
                 opt = list( grad = TRUE ))
 
         fits[[ j ]]$par = fits[[ j ]]$par[ 1:4 ]
@@ -81,10 +100,12 @@ run.ngarch = function( data, tickers, from.date, window.size = 252*2 )
         row.names( fits[[ j ]]$par ) = c( "lambda", "a0", "a1", "b1", "gamma" )
     }
 
-    names( fits ) = tickers
+    data[[ "fits" ]] = fits
 
     return( fits )
 }
+
+
 
 get.ng11.dist = function( fits, exp.dts, freq = 1 )
 {
@@ -94,7 +115,8 @@ get.ng11.dist = function( fits, exp.dts, freq = 1 )
     {
         fits[[ j ]]$freq = freq
     
-        dists[[ j ]] = ngarch11prices( exDts, fits[[ j ]], paths = 100e3 )
+        dists[[ j ]] = ngarch11prices( exp.dts, fits[[ j ]], paths = 100e3 )
+        dists[[ j ]]$exp.dts = exp.dts
     }
     names( dists ) = names( fits )
 
@@ -120,22 +142,35 @@ get.ng11.vols = function( dists, und.prices, strikes )
 
 
 data      = new.env()
-from.date = '2006-01-01'
+from.date = '2003-01-01'
 tickers   = c( "SPY", "QQQ", "GLD" )
 
-window.size = 252*2
+get.price.data( data, tickers, from.date )
+
+window.size = 252*3
+
+last.prices = c( 168.57, 77.73, 131.44 )
+##last.prices = NULL
+fits  = run.ngarch( data, tickers,
+    window.size,
+    last.price = last.prices )
 
 exp.dts = c(
-    "2013-08-16 20:00:00 GMT",
-    "2013-08-23 20:00:00 GMT",
+    "2013-09-13 20:00:00 GMT",
     "2013-09-20 20:00:00 GMT",
+    "2013-09-27 20:00:00 GMT",
+    "2013-10-18 20:00:00 GMT",
     "2013-11-15 20:00:00 GMT",
     "2013-12-31 20:00:00 GMT" )
 
-und.prices = c( 169.10, 76.73, 129.23 )
-##current.price = c( last( prices[,1] ), last( prices[,2] ), last( prices[,3] ))
-strikes = t(round( und.prices * 2, 0 ) / 2 + t(cbind( -10:10, -10:10, -10:10 ) / 2 ))
 
-fits  = run.ngarch( data, tickers, from.date, window.size )
 dists = get.ng11.dist( fits, exp.dts )
-vols  = get.ng11.vols( dists, und.prices, strikes )
+
+und.prices = c( 168.73, 77.85, 131.50 )
+strikes    = t(round( und.prices * 2, 0 ) / 2 + t(cbind( -10:10, -10:10, -10:10 ) / 2 ))
+vols       = get.ng11.vols( dists, und.prices, strikes )
+
+##vols = get.ng11.vols( dists[1], und.prices[1], strikes )
+
+tmp = vols[[3]]$vol[4,]
+
