@@ -1,7 +1,6 @@
 
 
-
-evalNgarch11 = function(x, pars, llonly = FALSE)
+eval.ng11 = function(x, pars, llonly = FALSE)
     ##
     ##  Description: Returns list including loglikelihood,
     ##    conditional variances and residuals for the given
@@ -13,7 +12,7 @@ evalNgarch11 = function(x, pars, llonly = FALSE)
 
 
 
-fitNgarch11 = function( x, init = NULL, popSize = 5,
+fit.ng11 = function( x, init = NULL, popSize = 5,
     stopLags = 5, minit = 5, maxit = 10,
     tol = 1e-5, fitInit = FALSE, option = NULL)
 {
@@ -25,27 +24,9 @@ fitNgarch11 = function( x, init = NULL, popSize = 5,
 
 
 
-bootfitNgarch11 = function(x, init = NULL, popSize = 5,
-    stopLags = 5, minit = 5, maxit = 10,
-    tol = 1e-5, fitInit = FALSE, option = NULL, numBoots = 20 )
-{
-    .Call( "BootfitNgarch11", x, init, fitInit, popSize, tol,
-          stopLags, minit, maxit, option, numBoots,
-          PACKAGE = "uri" )
-}
-
-
-
-simNgarch11 = function(n, paths = 1, pars, x0 = NULL, h0 = NULL, z = NULL)
+sim.ng11 = function(n, paths = 1, pars, x0 = NULL, h0 = NULL, z = NULL)
 {
     .Call( "sim_ngarch11", n, paths, pars, x0, h0, z, PACKAGE = "uri")
-}
-
-
-
-bootsimNgarch11 = function( n, paths = 1, pars, x0 = NULL, h0 = NULL, z = NULL )
-{
-    .Call( "sim_ngarch11_2", n, paths, pars, x0, h0, z, PACKAGE = "uri" )
 }
 
 
@@ -73,12 +54,12 @@ get.dist.ng11 = function(
              is.null( modelInfo$res ),
              boot & is.null( modelInfo$bootPar ),
              is.null( modelInfo$freq )))
-        stop( "incomplete NGARCH(1, 1) model info given" )
+        stop( "Incomplete NGARCH(1, 1) model info given" )
 
     t0   = as.POSIXct( Sys.time())
     tau  = as.double( difftime( as.POSIXct( exp.dts ), t0, "days" ))
     
-    names(tau) = names( exp.dts )
+    names( tau ) = names( exp.dts )
     
     tau  = tau[ tau > 0 ]
     freq = modelInfo$freq # Frequency in days
@@ -92,54 +73,32 @@ get.dist.ng11 = function(
 
     ## Simulate terminal prices
     
-    if ( boot )
+    lambda = 0
+    a0     = modelInfo$par[ "a0",     1 ]
+    a1     = modelInfo$par[ "a1",     1 ]
+    b1     = modelInfo$par[ "b1",     1 ]
+    gamma  = modelInfo$par[ "gamma",  1 ]
+    h0     = last( modelInfo$h )
+    x0     = last( modelInfo$x )
+        
+    if ( risk.neutral )
     {
-        N        = ceiling( paths / ncol( modelInfo$bootPar ))
-
-        bootPars = matrix(
-            rep( modelInfo$bootPar, N * ncol( modelInfo$bootPar )),
-            nrow( modelInfo$bootPar ),
-            N * ncol( modelInfo$bootPar ))
-        
-        bootPars             = bootPars[, 1:paths ]
-        rownames( bootPars ) = rownames( modelInfo$bootPar )
-
-        h0 = modelInfo$bootVar[  nrow( modelInfo$bootVar ),  ]
-        x0 = modelInfo$bootPath[ nrow( modelInfo$bootPath ), ]
-        h0 = rep( h0, N )[ 1:paths ]
-        x0 = rep( x0, N )[ 1:paths ]
-        
-        if ( risk.neutral )
-        {
-            bootPars[ "gamma", ] = bootPars[ "gamma", ] + bootPars[ "lambda", ]
-            bootPars[ "lambda",] = 0
-        }
-
-        rsim = bootsimNgarch11( n = n, paths = paths, bootPars, z = modelInfo$res,
-            x0 = x0, h0 = h0 )$x        
+        gamma  = lambda + gamma
+        lambda = 0
     }
-    else
-    {
-        lambda = modelInfo$par[ "lambda", 1 ]
-        a0     = modelInfo$par[ "a0",     1 ]
-        a1     = modelInfo$par[ "a1",     1 ]
-        b1     = modelInfo$par[ "b1",     1 ]
-        gamma  = modelInfo$par[ "gamma",  1 ]
-        h0     = last( modelInfo$h )
-        x0     = last( modelInfo$x )
         
-        if ( risk.neutral )
-        {
-            gamma  = lambda + gamma
-            lambda = 0
-        }
-        
-        pars = list( lambda = lambda, a0 = a0, a1 = a1, b1 = b1, gamma = gamma)
-        
-        rsim = simNgarch11( n = n, paths = paths,
-            par = pars, z = modelInfo$res, x0 = x0, h0 = h0 )$x
-    }
+    pars = list( a0 = a0, a1 = a1, b1 = b1, gamma = gamma)
+
+    res  = modelInfo$res
     
+    rsim = sim.ng11(
+        n     = n,
+        paths = paths,
+        par   = pars,
+        z     = ( res - mean( res )) / sd( res ),
+        x0    = x0,
+        h0    = h0 )$x
+       
     rsim = rsim[, !is.na( rsim[ n, ] ), drop = FALSE ]        
     r1   = apply( rsim, 2, cumsum )[ tauInt, , drop = FALSE ]
     r2   = rsim[ tauInt + 1, , drop = FALSE ]
@@ -148,7 +107,7 @@ get.dist.ng11 = function(
     S    = exp( r1 + r2 )
 
     if ( risk.neutral )
-        S = S / apply( S, 1, mean ) * exp( tau * (r - q) / 365 * freq )
+        S = S / apply( S, 1, mean ) * exp( tau * ( r - q ) / 365 * freq )
     else
         S = S * exp( -tau * q / 365 * freq )
  
@@ -369,29 +328,4 @@ get.vols.ng11 = function(
     ans$exp.dts      = distInfo$exp.dts
     
     return( ans )
-}
-
-
-fitNgarch11.b = function( x, init = NULL, popSize = 5,
-    stopLags = 5, minit = 5, maxit = 10,
-    tol = 1e-5, fitInit = FALSE, option = NULL)
-{
-    .Call(
-        "fit_ngarch11_B",
-        x,
-        init,
-        fitInit,
-        popSize,
-        tol,
-        stopLags,
-        minit,
-        maxit,
-        option,
-        PACKAGE = "uri" )
-}
-
-
-simNgarch11.b = function(n, paths = 1, pars, x0 = NULL, h0 = NULL, z = NULL)
-{
-    .Call( "sim_ngarch11_B", n, paths, pars, x0, h0, z, PACKAGE = "uri")
 }
