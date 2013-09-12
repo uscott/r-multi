@@ -52,7 +52,7 @@ static void sim_ng11_path( const long T,
         *h0 = a0 / ( 1.0 - b1 - a1 * ( 1.0 + SQR( gam )));
         *x0 = -0.5 * ( *h0 );        
 
-        warning( "No starting points given" );
+        /* warning( "No starting points given" ); */
     }
 
     z0  = *x0 + 0.5 * ( *h0 );
@@ -291,7 +291,7 @@ SEXP fit_ngarch11( SEXP x,
                    SEXP maxit, 
                    SEXP options)
 {
-    const int    parLen       = NUM_NG11_PAR-1 + !!asInteger( fitInit );
+    const int    parLen       = NUM_NG11_PAR - 1 + !!asInteger( fitInit );
     const int    ibasePopSize = asInteger( basePopSize );
     const long   istopLags    = asInteger( stopLags );
     const long   imaxit       = asInteger( maxit );
@@ -474,78 +474,6 @@ SEXP sim_ngarch11( SEXP T,
 
 
 
-static void sim_ngarch11_2_chk(SEXP *T, SEXP *npaths, SEXP *par,
-                               SEXP *x0, SEXP *h0, SEXP *z,
-                               int  *numprot)
-{
-}
-
-
-
-SEXP sim_ngarch11_2( SEXP T, SEXP npaths, SEXP par,
-                     SEXP x0, SEXP h0, SEXP z)
-{
-    int zlen; 
-    int numprot = 0;
-    long pathLen, numPaths;
-    long j;
-    double 
-        *uPtr                = NULL, 
-        *xPtr                = NULL, 
-        *hPtr                = NULL;
-    
-    char *names[ 2 + NARGS ] = { "x", "h", "T", "npaths", "par", "x0", "h0", "z" };
-    SEXP ans, x, h, lambda, a0, a1, b1, gamma;
-
-    sim_ngarch11_2_chk(&T, &npaths, &par, &x0, &h0, &z, &numprot);
-
-    pathLen  = (long) asInteger( T );
-    numPaths = (long) asInteger( npaths );
-
-    zlen = length(z);
- 
-    PROT2( ans = NEW_LIST( 2 + NARGS ), numprot );
-
-    PROT2( x = allocMatrix( REALSXP, pathLen, numPaths ), numprot );
-    PROT2( h = allocMatrix( REALSXP, pathLen, numPaths ), numprot );
-    
-
-    GetRNGstate();
- 
-    /* uPtr = (double *) R_alloc( pathLen, sizeof( double )); */
-    uPtr = (double *) malloc( pathLen * sizeof( double ));    
-
-    for ( j = 0; j < numPaths; j++ ) 
-    {
-        xPtr = matcol1( x, j );
-        hPtr = matcol1( h, j );        
-
-        get_random_sample2( REAL( z ), uPtr, zlen, pathLen );
-
-        sim_ng11_path( pathLen, matcol1( par, j), REAL( x0 ) + j,
-                       REAL( h0 ) + j, uPtr, xPtr,
-                       hPtr );
-    }
-
-    free( uPtr );    
- 
-    PutRNGstate();
-
-    SET_ELT( ans, 0, x );
-    SET_ELT( ans, 1, h );
-    SET_ELT( ans, 2, T );
-    SET_ELT( ans, 3, npaths );
-    SET_ELT( ans, 4, par );
-    SET_ELT( ans, 5, x0 );
-    SET_ELT( ans, 6, h0 );
-    SET_ELT( ans, 7, z );
-
-    set_names(ans, names);
-
-    UNPROTECT(numprot);
-
-    return ans;
-}
 #undef NARGS
 
 
