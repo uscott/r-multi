@@ -816,66 +816,69 @@ void matrix_prod(carray mat1, carray mat2, int trans1, int trans2, carray ans)
    *******************************************************************/
 
 {
-  int i, j, k, inc1, inc2, K1, K2, ok;
-  char *vmax;
-  register double m1, m2;
-  carray tmp;
+    int i, j, k, K1, K2, ok;
+    char *vmax;
+    register double m1, m2;
+    carray tmp;
 
-  /* Test whether everything is a matrix */
-  if (!is_matrix(mat1) || !is_matrix(mat2) || !is_matrix(ans))
-    error ("Non-matrix passed to matrix_prod");
-
-
-  /* Test whether matrices conform. K is the dimension that is
-     lost by multiplication */
-
-  ok = trans1 ? 
-    (K1 = NROW(mat1), NCOL(mat1) == NROW(ans)) : 
-    (K1 = NCOL(mat1), NROW(mat1) == NROW(ans));
-
-  ok *= trans2 ?
-    (K2 = NCOL(mat2), NROW(mat2) == NCOL(ans)) :
-    (K2 = NROW(mat2), NCOL(mat2) == NCOL(ans));
-
-  ok *= K1 == K2;
-
-  if (!ok)
-    error ("Non-conformable matrices in matrix_prod");
-
-  /*    
-  **    In case ans is the same as mat1 or mat2, we create a temporary
-  **    matrix tmp to hold the answer, then copy it to ans 
-  */
-
-  tmp = init_array();
-
-  vmax = vmaxget();
-
-  tmp = make_zero_matrix(NROW(ans), NCOL(ans));
+    /* Test whether everything is a matrix */
+    if (!is_matrix(mat1) || !is_matrix(mat2) || !is_matrix(ans))
+        error ("Non-matrix passed to matrix_prod");
 
 
-  for (i = 0; i < NROW(tmp); i++) {
+    /* Test whether matrices conform. K is the dimension that is
+       lost by multiplication */
 
-    for (j = 0; j < NCOL(tmp); j++) {
+    ok = trans1 ? 
+        (K1 = NROW(mat1), NCOL(mat1) == NROW(ans)) : 
+        (K1 = NCOL(mat1), NROW(mat1) == NROW(ans));
 
-      for (k = 0; k < K1; k++) {
+    ok *= trans2 ?
+        (K2 = NCOL(mat2), NROW(mat2) == NCOL(ans)) :
+        (K2 = NROW(mat2), NCOL(mat2) == NCOL(ans));
 
-        m1 = trans1 ? MATRIX(mat1)[k][i]: MATRIX(mat1)[i][k];
-        m2 = trans2 ? MATRIX(mat2)[j][k]: MATRIX(mat2)[k][j];
+    ok *= K1 == K2;
 
-        MATRIX(tmp)[i][j] += m1 * m2;
+    if (!ok)
+        error ("Non-conformable matrices in matrix_prod");
 
-      }
+    /*    
+    **    In case ans is the same as mat1 or mat2, we create a temporary
+    **    matrix tmp to hold the answer, then copy it to ans 
+    */
 
+    tmp = init_array();
+
+    vmax = vmaxget();
+
+    tmp = make_zero_matrix(NROW(ans), NCOL(ans));
+
+
+    for (i = 0; i < NROW(tmp); i++) 
+    {
+
+        for (j = 0; j < NCOL(tmp); j++) 
+        {
+
+            for (k = 0; k < K1; k++) 
+            {
+
+                m1 = trans1 ? MATRIX(mat1)[k][i]: MATRIX(mat1)[i][k];
+                m2 = trans2 ? MATRIX(mat2)[j][k]: MATRIX(mat2)[k][j];
+
+                MATRIX(tmp)[i][j] += m1 * m2;
+
+            }
+
+        }
+
+        
     }
 
 
-  }
+    copy_array(tmp, ans);
 
-
-  copy_array(tmp, ans);
-
-  vmaxset(vmax);
+    vmaxset(vmax);
 
 }
 
@@ -896,105 +899,94 @@ void matrix_prod_ns(carray mat1, carray mat2, int trans1, int trans2, carray ans
    *******************************************************************/
 
 {
-  int i, j, k, inc1, inc2, K1, K2, ok;
-  char *vmax;
-  register double m1, m2;
-  carray tmp;
+    int i, j, k, K1, K2, ok;
+    register double m1, m2;
+    carray tmp;
 
+    /* Test whether ans == mat1 or ans == mat2 */
+    if( ARRAY1( ans ) == ARRAY1( mat1 ) || ARRAY1( ans ) == ARRAY1( mat2 ))
+        error( "ARRAY1(ans) == ARRAY1(mat1) || ARRAY1(ans) == ARRAY1(mat2)" );
 
-  /* Test whether ans == mat1 or ans == mat2 */
-  if (ARRAY1(ans) == ARRAY1(mat1) || ARRAY1(ans) == ARRAY1(mat2))
-    error ("ARRAY1(ans) == ARRAY1(mat1) || ARRAY1(ans) == ARRAY1(mat2)");
-
-
-
-  /* Test whether everything is a matrix */
-  if (!is_matrix(mat1) || !is_matrix(mat2) || !is_matrix(ans))
-    error ("Non-matrix passed to matrix_prod");
-
+    /* Test whether everything is a matrix */
+    if( !is_matrix( mat1 ) || !is_matrix( mat2 ) || !is_matrix( ans ))
+    error( "Non-matrix passed to matrix_prod" );
 
   /* Test whether matrices conform. K is the dimension that is
      lost by multiplication */
 
-  ok = trans1 ? 
-    (K1 = NROW(mat1), NCOL(mat1) == NROW(ans)) : 
-    (K1 = NCOL(mat1), NROW(mat1) == NROW(ans));
+    ok = trans1 ? 
+        ( K1 = NROW( mat1 ), NCOL( mat1 ) == NROW( ans )) : 
+        ( K1 = NCOL( mat1 ), NROW( mat1 ) == NROW( ans ));
 
-  ok *= trans2 ?
-    (K2 = NCOL(mat2), NROW(mat2) == NCOL(ans)) :
-    (K2 = NROW(mat2), NCOL(mat2) == NCOL(ans));
+    ok *= trans2 ?
+        ( K2 = NCOL( mat2 ), NROW( mat2 ) == NCOL( ans )) :
+        ( K2 = NROW( mat2 ), NCOL( mat2 ) == NCOL( ans ));
 
-  ok *= K1 == K2;
+    ok *= ( K1 == K2 );
 
-  if (!ok)
-    error ("Non-conformable matrices in matrix_prod");
+    if ( !ok )
+        error ("Non-conformable matrices in matrix_prod");
 
-
-  tmp = ans; /* Here tmp is just basically an alias for ans */
-
-
-  for (i = 0; i < NROW(tmp); i++) {
-
-    for (j = 0; j < NCOL(tmp); j++) {
-
-      MATRIX(tmp)[i][j] = 0.0;
-
-      for (k = 0; k < K1; k++) {
-
-        m1 = trans1 ? MATRIX(mat1)[k][i]: MATRIX(mat1)[i][k];
-        m2 = trans2 ? MATRIX(mat2)[j][k]: MATRIX(mat2)[k][j];
-
-        MATRIX(tmp)[i][j] += m1 * m2;
-
-      }
-
-    }
+    tmp = ans; /* Here tmp is just basically an alias for ans */
 
 
-  }
+    for ( i = 0; i < NROW( tmp ); ++i ) 
+        for ( j = 0; j < NCOL( tmp ); ++j ) 
+        {
+            MATRIX( tmp )[ i ][ j ] = 0.0;
 
+            for ( k = 0; k < K1; ++k ) 
+            {
+                m1 = trans1 ? 
+                    MATRIX( mat1 )[ k ][ i ] : 
+                    MATRIX( mat1 )[ i ][ k ];
 
+                m2 = trans2 ? 
+                    MATRIX( mat2 )[ j ][ k ] :
+                    MATRIX( mat2 )[ k ][ j ];
 
+                MATRIX( tmp )[ i ][ j ] += m1 * m2;
+            }
+        }    
 }
 
 
 
-
-
-carray matrix_prod_b(carray mat1, carray mat2, int trans1, int trans2)
+carray matrix_prod_b( carray mat1, carray mat2, int trans1, int trans2 )
 {
-  carray ans;
-  int m, n;
+    carray ans;
+    int m, n;
 
-  m = trans1 ? NCOL(mat1) : NROW(mat1);
-  n = trans2 ? NROW(mat2) : NCOL(mat2);
+    m = trans1 ? NCOL(mat1) : NROW(mat1);
+    n = trans2 ? NROW(mat2) : NCOL(mat2);
 
-  ans = make_zero_matrix(m, n);
+    ans = make_zero_matrix(m, n);
+    
+    matrix_prod_ns(mat1, mat2, trans1, trans2, ans);
 
-  matrix_prod_ns(mat1, mat2, trans1, trans2, ans);
-
-  return ans;
+    return ans;
 }
 
 
 
-void matrix_prod_3(carray mat1, carray mat2, carray mat3,
-		  int trans1, int trans2, int trans3, 
-                   carray ans)
+void matrix_prod_3( carray mat1, carray mat2, carray mat3,
+                    int trans1, int trans2, int trans3, 
+                    carray ans)
 {
-  int dim1, dim2;
-  carray a;
+    int dim1, dim2;
+    carray a;
 
-  dim1 = (trans1 ? NCOL(mat1) : NROW(mat1));
-  dim2 = (trans2 ? NROW(mat2) : NCOL(mat2));
+    dim1 = trans1 ? NCOL(mat1) : NROW(mat1);
+    dim2 = trans2 ? NROW(mat2) : NCOL(mat2);
 
-  a = make_zero_matrix(dim1, dim2);
+    a = make_zero_matrix(dim1, dim2);
 
-  matrix_prod_ns(mat1, mat2, trans1, trans2, a);
+    matrix_prod_ns(mat1, mat2, trans1, trans2, a);
 
-  matrix_prod(a, mat3, 0, trans3, ans);
+    matrix_prod(a, mat3, 0, trans3, ans);
 
 }
+
 
 
 carray matrix_prod_3b(carray mat1, carray mat2, carray mat3,
@@ -1254,35 +1246,33 @@ double det(carray a)
    *******************************************************************/
 
 {
-  int    j, n = NROW(a);
-  int     *ix = NULL;
-  double    d = 0.0, s = 1.0;
-  carray    b;
+    int    j, n = NROW(a);
+    int     *ix = NULL;
+    double    d = 0.0;
+    carray    b;
 
-  if (2 != DIM_LENGTH(a) || n != NCOL(a))
-    error ("C error: det.  Expected square matrix argument.");
+    if ( 2 != DIM_LENGTH( a ) || n != NCOL( a ))
+        error ("C error: det.  Expected square matrix argument.");
 
-  ix = (int *) malloc(n * sizeof(int));
+    ix = (int *) malloc( n * sizeof( int ));
 
-  if (!ix)
-    error ("C error: det.  Malloc failed to allocate memory.");
+    if ( !ix )
+        error ("C error: det.  Malloc failed to allocate memory.");
 
-  b = make_zero_matrix(n, n);
-  copy_array(a, b);
+    b = make_zero_matrix( n, n );
+    copy_array( a, b );
 
-  if (ludcmp2(ARRAY2(b), n, ix, &d)) {
-    
-    for (j = 0; j < n; j++) {
-      d *= ARRAY2(b)[j][j];
-    }
+    if( ludcmp2( ARRAY2( b ), n, ix, &d )) 
+    {
+        for (j = 0; j < n; j++) 
+            d *= ARRAY2( b )[ j ][ j ];
+    } 
+    else 
+        d = 0.0;
 
-  } 
-  else 
-    d = 0.0;
+    free( ix );
 
-  free(ix);
-
-  return d;
+    return d;
 }
 
 

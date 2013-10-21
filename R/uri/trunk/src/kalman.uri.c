@@ -87,80 +87,168 @@ static void kalman_recursion(carray y,
                              carray res,
                              double *ll)
 {
-  register long t;
-  int r, k, n, ok;
-  long T;
-  carray H, A, P, K;
+    long t;
+    int r, k, n, ok;
+    long T;
+    carray H, A, P, K;
   /* For use as "generic" matrices: */
-  carray rxr, nxn_a, nxn_b, rx1_a, rx1_b, nx1_a, nx1_b, kx1, r2xr2, r2x1;
+    carray rxr, nxn_a, nxn_b, rx1_a, rx1_b, nx1_a, nx1_b, kx1, r2xr2, r2x1;
 
-  ok = 
-    is_matrix(y) && is_matrix(Htr) && is_matrix(F)    &&
-    is_matrix(Q) && is_matrix(R)   && is_matrix(Atr)  &&
-    is_matrix(x) && is_matrix(xi)  && is_matrix(yfit) &&
-    is_matrix(res);
+    ok = 
+        is_matrix(y) && is_matrix(Htr) && is_matrix(F)    &&
+        is_matrix(Q) && is_matrix(R)   && is_matrix(Atr)  &&
+        is_matrix(x) && is_matrix(xi)  && is_matrix(yfit) &&
+        is_matrix(res);
 
-  ok *= (int)ll;
+    ok *= ( ll != NULL );
 
-  if (!ok)
-    error ("bad args in kalman_recursion");
+    if (!ok)
+        error ("bad args in kalman_recursion");
 
-  r = NCOL(Htr);
-  k = NCOL(x);
-  n = NCOL(y);
-  T = NROW(y);
-
-
-  H     = make_zero_matrix(r, n);           /* For transpose of Htr     */
-  A     = make_zero_matrix(k, n);           /* For transpose of Atr     */
-
-  P     = make_zero_matrix(r, r);           /* Covariance matrix        */
-  K     = make_zero_matrix(r, n);           /* Gain matrix              */
-
-  rxr   = make_zero_matrix(r, r);           /* Generic r x r matrix     */
-  nxn_a = make_zero_matrix(n, n);           /* Generic n x n matrix     */
-  nxn_b = make_zero_matrix(n, n);           /* Generic n x n matrix     */
-  rx1_a = make_zero_matrix(r, 1);           /* Generic r x 1 matrix     */
-  rx1_b = make_zero_matrix(r, 1);           /* Generic r x 1 matrix     */
-  nx1_a = make_zero_matrix(n, 1);           /* Generic n x 1 matrix     */
-  nx1_b = make_zero_matrix(n, 1);           /* Generic n x 1 matrix     */
-  kx1   = make_zero_matrix(k, 1);           /* Generic k x 1 matrix     */
-
-  r2xr2 = make_zero_matrix(r * r, r * r);   /* Generic r^2 x r^2 matrix */
-  r2x1  = make_zero_matrix(r * r, 1);       /* Generic r^2 x 1   matrix */
+    r = NCOL(Htr);
+    k = NCOL(x);
+    n = NCOL(y);
+    T = NROW(y);
 
 
-  transpose_matrix(Htr, H);
-  transpose_matrix(Atr, A);
+    H     = make_zero_matrix(r, n);           /* For transpose of Htr     */
+    A     = make_zero_matrix(k, n);           /* For transpose of Atr     */
+
+    P     = make_zero_matrix(r, r);           /* Covariance matrix        */
+    K     = make_zero_matrix(r, n);           /* Gain matrix              */
+
+    rxr   = make_zero_matrix(r, r);           /* Generic r x r matrix     */
+    nxn_a = make_zero_matrix(n, n);           /* Generic n x n matrix     */
+    nxn_b = make_zero_matrix(n, n);           /* Generic n x n matrix     */
+    rx1_a = make_zero_matrix(r, 1);           /* Generic r x 1 matrix     */
+    rx1_b = make_zero_matrix(r, 1);           /* Generic r x 1 matrix     */
+    nx1_a = make_zero_matrix(n, 1);           /* Generic n x 1 matrix     */
+    nx1_b = make_zero_matrix(n, 1);           /* Generic n x 1 matrix     */
+    kx1   = make_zero_matrix(k, 1);           /* Generic k x 1 matrix     */
+
+    r2xr2 = make_zero_matrix(r * r, r * r);   /* Generic r^2 x r^2 matrix */
+    r2x1  = make_zero_matrix(r * r, 1);       /* Generic r^2 x 1   matrix */
 
 
-  kronecker(F, F, r2xr2); /* r2xr2 <- kronecker product of F w/ itself */
-
-  array_op(make_identity_matrix(r * r), r2xr2, '-', r2xr2);
-
-  matrix_prod(r2xr2, vec(Q), 0, 0, r2x1);
-
-  memcpy(ARRAY1(P),
-	 ARRAY1(transpose_matrix_b(make_matrix(ARRAY1(r2x1), r, r))),
-	 r * r * sizeof(double));
-
-  matrix_inverse(P, P); /* P <- P(1|0) */
-
-  *ll = n * T * log(M_2PI);
+    transpose_matrix(Htr, H);
+    transpose_matrix(Atr, A);
 
 
-  for (t = 1; t < T && R_FINITE(*ll); t++) {
+    kronecker(F, F, r2xr2); /* r2xr2 <- kronecker product of F w/ itself */
 
+    array_op(make_identity_matrix(r * r), r2xr2, '-', r2xr2);
+
+    matrix_prod(r2xr2, vec(Q), 0, 0, r2x1);
+
+    memcpy(ARRAY1(P),
+           ARRAY1(transpose_matrix_b(make_matrix(ARRAY1(r2x1), r, r))),
+           r * r * sizeof(double));
+
+    matrix_inverse(P, P); /* P <- P(1|0) */
+
+    *ll = n * T * log(M_2PI);
+
+
+    for (t = 1; t < T && R_FINITE(*ll); t++) 
+    {
+        memcpy(ARRAY1(rx1_b),  ARRAY1(rx1_a),    r * sizeof(double));
+        memcpy(ARRAY1(kx1),    MATRIX(x)[t - 1], k * sizeof(double));
+        memcpy(ARRAY1(nx1_a),  MATRIX(y)[t - 1], n * sizeof(double));
+        /*
+        **  rx1_b <- xi(t|t-1) (= 0 if t == 1)
+        **  kx1   <- x[t, ]
+        **  nx1_a <- y[t, ]
+        */
+
+        matrix_prod_3(H, P, H, 1, 0, 0, nxn_a);
+        /* 
+        **  nxn_a <- H'P(t|t-1)H
+        */
+
+        array_op(nxn_a, R, '+', nxn_a);         
+        /* 
+        **  nxn_a <- H'P(t|t-1)H + R
+        */
+    
+        *ll += log(det(nxn_a));
+        /*
+        **  *ll += log det (H'P(t|t-1)H + R)
+        */
+
+        matrix_inverse(nxn_a, nxn_b);           
+        /* 
+        **  nxn_b <- (H'P(t|t-1)H + R)^(-1)
+        */
+
+        matrix_prod_4(F, P, H, nxn_b, 0, 0, 0, 0, K);
+        /*
+        **  K <- FPH(H'P(t|t-1)H + R)^(-1)
+        **      = gain matrix at time t
+        */
+
+        matrix_prod(F, rx1_a, 0, 0, rx1_a);
+        /*
+        **  rx1_a <- F * xi(t|t-1)
+        */
+
+        array_op(nx1_a, matrix_prod_b(Atr, kx1,   0, 0), '-', nx1_a);
+        array_op(nx1_a, matrix_prod_b(Htr, rx1_b, 0, 0), '-', nx1_a);
+        /*
+        **  nx1_a <- y(t) - A'x(t) - H'xi(t|t - 1)
+        **          = residual at time t
+        */
+
+        *ll += *ARRAY1(matrix_prod_3b(nx1_a, nxn_b, nx1_a, 1, 0, 0));
+        /*
+        **  *ll += z(t)' (H'P(t|t-1)H + R)^(-1) z(t)
+        */
+
+        memcpy(MATRIX(res)[t - 1], ARRAY1(nx1_a), n * sizeof(double));
+        /*
+        **  MATRIX(res)[t - 1] <- residual at time t
+        */
+        matrix_prod(K, nx1_a, 0, 0, rx1_b);    
+
+        array_op(rx1_a, rx1_b, '+', rx1_a);
+        /*
+        **  rx1_a <- xi(t+1|t)
+        */
+
+        memcpy(MATRIX(xi)[t], ARRAY1(rx1_a), r * sizeof(double));
+        /*
+        **  MATRIX(xi)[t] <- xi(t+1|t)
+        */
+        matrix_prod(K, Htr, 0, 0, rxr);
+        array_op(F, rxr, '-', rxr);
+        /*
+        **  rxr <- F - KH'
+        */
+
+        matrix_prod_3(rxr, P, rxr, 0, 0, 1, P);
+        /*
+        **  P <- (F - KH')P(t|t-1)(F - KH')'
+        */
+
+        matrix_prod_3(K, R, K, 0, 0, 1, rxr);
+        /*
+        **  rxr <- KRK'
+        */
+
+        array_op(P, rxr, '+', P);
+        array_op(P, Q,   '+', P);
+        /*
+        **  P <- P(t+1|t)
+        */
+    }
+    /*
+    **    Time T stuff:
+    */
 
     memcpy(ARRAY1(rx1_b),  ARRAY1(rx1_a),    r * sizeof(double));
     memcpy(ARRAY1(kx1),    MATRIX(x)[t - 1], k * sizeof(double));
-    memcpy(ARRAY1(nx1_a),  MATRIX(y)[t - 1], n * sizeof(double));
-    /*
-    **  rx1_b <- xi(t|t-1) (= 0 if t == 1)
-    **  kx1   <- x[t, ]
-    **  nx1_a <- y[t, ]
-    */
+    memcpy(ARRAY1(nx1_a),  MATRIX(y)[t - 1], n * sizeof(double));    
 
+  
     matrix_prod_3(H, P, H, 1, 0, 0, nxn_a);
     /* 
     **  nxn_a <- H'P(t|t-1)H
@@ -173,127 +261,27 @@ static void kalman_recursion(carray y,
     
     *ll += log(det(nxn_a));
     /*
-    **  *ll += log det (H'P(t|t-1)H + R)
+    **  *ll += log det (H'P(T|T-1)H + R)
     */
 
     matrix_inverse(nxn_a, nxn_b);           
     /* 
-    **  nxn_b <- (H'P(t|t-1)H + R)^(-1)
+    **  nxn_b <- (H'P(T|T-1)H + R)^(-1)
     */
 
-    matrix_prod_4(F, P, H, nxn_b, 0, 0, 0, 0, K);
-    /*
-    **  K <- FPH(H'P(t|t-1)H + R)^(-1)
-    **      = gain matrix at time t
-    */
-
-    matrix_prod(F, rx1_a, 0, 0, rx1_a);
-    /*
-    **  rx1_a <- F * xi(t|t-1)
-    */
 
     array_op(nx1_a, matrix_prod_b(Atr, kx1,   0, 0), '-', nx1_a);
-    array_op(nx1_a, matrix_prod_b(Htr, rx1_b, 0, 0), '-', nx1_a);
-    /*
-    **  nx1_a <- y(t) - A'x(t) - H'xi(t|t - 1)
-    **          = residual at time t
-    */
-
+    array_op(nx1_a, matrix_prod_b(Htr, rx1_a, 0, 0), '-', nx1_a);
 
     *ll += *ARRAY1(matrix_prod_3b(nx1_a, nxn_b, nx1_a, 1, 0, 0));
     /*
-    **  *ll += z(t)' (H'P(t|t-1)H + R)^(-1) z(t)
+    **  *ll += z(T)' (H'P(T|T-1)H + R)^(-1) z(T)
     */
+
 
     memcpy(MATRIX(res)[t - 1], ARRAY1(nx1_a), n * sizeof(double));
-    /*
-    **  MATRIX(res)[t - 1] <- residual at time t
-    */
 
-
-    matrix_prod(K, nx1_a, 0, 0, rx1_b);
-    
-
-    array_op(rx1_a, rx1_b, '+', rx1_a);
-    /*
-    **  rx1_a <- xi(t+1|t)
-    */
-
-    memcpy(MATRIX(xi)[t], ARRAY1(rx1_a), r * sizeof(double));
-    /*
-    **  MATRIX(xi)[t] <- xi(t+1|t)
-    */
-
-
-    matrix_prod(K, Htr, 0, 0, rxr);
-    array_op(F, rxr, '-', rxr);
-    /*
-    **  rxr <- F - KH'
-    */
-
-    matrix_prod_3(rxr, P, rxr, 0, 0, 1, P);
-    /*
-    **  P <- (F - KH')P(t|t-1)(F - KH')'
-    */
-
-    matrix_prod_3(K, R, K, 0, 0, 1, rxr);
-    /*
-    **  rxr <- KRK'
-    */
-
-    array_op(P, rxr, '+', P);
-    array_op(P, Q,   '+', P);
-    /*
-    **  P <- P(t+1|t)
-    */
-  }
-
-
-  /*
-  **    Time T stuff:
-  */
-
-  memcpy(ARRAY1(rx1_b),  ARRAY1(rx1_a),    r * sizeof(double));
-  memcpy(ARRAY1(kx1),    MATRIX(x)[t - 1], k * sizeof(double));
-  memcpy(ARRAY1(nx1_a),  MATRIX(y)[t - 1], n * sizeof(double));    
-
-  
-  matrix_prod_3(H, P, H, 1, 0, 0, nxn_a);
-  /* 
-  **  nxn_a <- H'P(t|t-1)H
-  */
-
-  array_op(nxn_a, R, '+', nxn_a);         
-  /* 
-  **  nxn_a <- H'P(t|t-1)H + R
-  */
-    
-  *ll += log(det(nxn_a));
-  /*
-  **  *ll += log det (H'P(T|T-1)H + R)
-  */
-
-  matrix_inverse(nxn_a, nxn_b);           
-  /* 
-  **  nxn_b <- (H'P(T|T-1)H + R)^(-1)
-  */
-
-
-  array_op(nx1_a, matrix_prod_b(Atr, kx1,   0, 0), '-', nx1_a);
-  array_op(nx1_a, matrix_prod_b(Htr, rx1_a, 0, 0), '-', nx1_a);
-
-  *ll += *ARRAY1(matrix_prod_3b(nx1_a, nxn_b, nx1_a, 1, 0, 0));
-  /*
-  **  *ll += z(T)' (H'P(T|T-1)H + R)^(-1) z(T)
-  */
-
-
-  memcpy(MATRIX(res)[t - 1], ARRAY1(nx1_a), n * sizeof(double));
-
-
-  *ll *= -0.5;
-
-
+    *ll *= -0.5;
 }
 
 
@@ -342,7 +330,7 @@ SEXP kalman1(SEXP y1,
 
   SEXP ans, ans_names;
   int numprot = 0;
-  int n, r, k;
+  int n, r, k = 0;
   long T;
   double ll = 0.0;
   carray y, yfit, Htr, F, Q, R, x, Atr, xi, res;

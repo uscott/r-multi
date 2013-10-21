@@ -11,6 +11,14 @@
 /**********************************************************************/
 /**********************************************************************/
 
+#define MAX_NGARCH_TS 10
+
+typedef struct NGARCH_CONTEXT
+{
+    long    T[ MAX_NGARCH_TS ];
+    double *x[ MAX_NGARCH_TS ];
+    double *h[ MAX_NGARCH_TS ];    
+} NGARCH_CONTEXT;
 
 
 #define NUM_NG11_PAR 4
@@ -87,7 +95,7 @@ static void ng11( const long T,
 {
     int inc = 0;
     double        
-        a0, a1, b1, gam, h1, dum1, dum2, *lh;
+        a0, a1, b1, gam, dum1, dum2, *lh;
     int           
         t, ok;
 
@@ -250,7 +258,7 @@ static double ll_ngarch11( SEXP par, SEXP x )
           /* z = */ (double *) NULL, 
           &ll );
 
-    UNPROTECT(numprot);
+    UNPROTECT( numprot );
 
     return ll;
 }
@@ -373,7 +381,129 @@ SEXP fit_ngarch11( SEXP x,
 #undef ANS_LEN
 
 
+static double ll_ngarch11_opcl( double *par, long parlen, void *context )
+/*******************************************************************
+ *******************************************************************/
+{
+    double llop = 0.0, llcl = 0.0;
+    NGARCH_CONTEXT *pngcon;    
 
+    if ( par == NULL || context == NULL ) 
+        error( "Bad args to ll_ngarch11_opcl" );
+
+    pngcon = (NGARCH_CONTEXT *) context;
+  
+    ng11( pngcon->T[ 0 ], pngcon->x[ 0 ], par, 
+          /* llonly = */ 1, 
+          /* h = */ (double *) NULL, 
+          /* z = */ (double *) NULL, 
+          &llop );
+
+    ng11( pngcon->T[ 1 ], pngcon->x[ 1 ], par,
+          /* llonly = */ 1, 
+          /* h = */ (double *) NULL, 
+          /* z = */ (double *) NULL, 
+          &llcl );
+
+    return llop + llcl;
+}
+
+
+
+#define ANS_LEN 8
+#ifdef ALKDJFAS
+SEXP fit_ngarch11_opcl( SEXP op, 
+                        SEXP cl,
+                        SEXP initPar, 
+                        SEXP fitInit, 
+                        SEXP basePopSize, 
+                        SEXP tol, 
+                        SEXP stopLags, 
+                        SEXP minit, 
+                        SEXP maxit, 
+                        SEXP options)
+{
+    const int    parLen       = NUM_NG11_PAR - 1 + !!asInteger( fitInit );
+    const int    ibasePopSize = asInteger( basePopSize );
+    const long   istopLags    = asInteger( stopLags );
+    const long   imaxit       = asInteger( maxit );
+    const long   iminit       = asInteger( minit );
+    const double dtol         = asReal( tol );
+
+    int  numprot = 0;
+    int  gradToo;
+    long gradMaxIt;
+    char *names[ ANS_LEN ] = 
+        { "par", "ll", "convergence", "x", "h", "res", "gradconv" };
+    SEXP ans, fit1, fit2, tmp, dimNames, parNames;
+
+    ENSURE_NUMERIC( x, numprot );
+
+    adjustInitPar( &initPar, parLen, &numprot );
+
+    /* Do the fitting! */
+    fit1 = optimGa2( ll_ngarch11, initPar, x, parLen, 
+                     ibasePopSize, istopLags, iminit, imaxit, 
+                     0, dtol, 0);
+
+    PROT2( fit1, numprot );
+
+    PROT2( ans      = NEW_LIST( ANS_LEN ), numprot );
+    PROT2( parNames = NEW_STRING( parLen ), numprot );
+    PROT2( dimNames = NEW_LIST( 2 ), numprot );
+
+    gradToo = asInteger( getListElt( options, "grad" ));
+    gradToo = SET_NA_TO_ZERO( gradToo );
+
+    if ( gradToo ) 
+    {
+        gradMaxIt = asInteger( getListElt( options, "maxit" ));
+    
+        if ( !R_FINITE( (double)gradMaxIt ) || gradMaxIt <= 0)
+            gradMaxIt = imaxit;
+
+        fit2 = optimGradient2( ll_ngarch11, 
+                               getListElt( fit1, "par" ), 
+                               x, dtol, 0, 0, gradMaxIt );
+        PROT2( fit2, numprot );
+    } 
+    else 
+    {
+        fit2 = fit1;
+    }
+
+    PROT2( tmp = ngarch11( 
+               x, 
+               getListElt( fit2, "par" ), 
+               ScalarInteger( 0 )), 
+           numprot);
+
+    SET_ELT( ans, 0, getListElt( fit2, names[ 0 ] ));
+    SET_ELT( ans, 1, getListElt( fit2, "value" ));
+    SET_ELT( ans, 2, getListElt( fit1, names[ 2 ] ));
+    SET_ELT( ans, 3, x );
+    SET_ELT( ans, 4, getListElt( tmp, names[ 4 ] ));
+    SET_ELT( ans, 5, getListElt( tmp, names[ 5 ] ));
+    SET_ELT( ans, 6, getListElt( fit2, "convergence" ));
+
+    set_names( ans, names );
+
+    CHAR_PTR( parNames )[ A0_INDEX ]     = mkChar( "a0" );
+    CHAR_PTR( parNames )[ A1_INDEX ]     = mkChar( "a1" );
+    CHAR_PTR( parNames )[ B1_INDEX ]     = mkChar( "b1" );
+    CHAR_PTR( parNames )[ GAMMA_INDEX ]  = mkChar( "gamma" );
+
+    SET_ELT( dimNames, 0, parNames );
+    SET_ELT( dimNames, 1, R_NilValue );
+
+    setAttrib( GET_ELT(ans, 0), R_DimNamesSymbol, dimNames );
+
+    UNPROTECT(numprot);
+
+    return ans;
+}
+#endif
+#undef ANS_LEN
 
 
 #define NPAR  ( NUM_NG11_PAR - 0*1 )
@@ -483,3 +613,5 @@ SEXP sim_ngarch11( SEXP T,
 #undef B1_INDEX 
 #undef GAMMA_INDEX 
 #undef H1_INDEX
+
+#undef MAX_NGARCH_TS

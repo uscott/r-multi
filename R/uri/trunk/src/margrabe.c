@@ -232,9 +232,9 @@ static void margrabe2_0(const double T, const double S1, const double S2,
             z  = rho * (*e1) + sqrt(1.0 - SQR(rho)) * (*e2);
             x2 = S2 * mu2 * exp( z  * v2 - 0.5 * SQR(v2));
 
-            price  += DMAX(x2 - x1 - K, 0) - DMAX(x2 - x1, 0);
-            price1 += DMAX(x2 - u * x1 - K, 0) - DMAX(x2 - u * x1, 0);
-            price2 += DMAX(u * x2 - x1 - K, 0) - DMAX(u * x2 - x1, 0);
+            price  += MAX(x2 - x1 - K, 0) - MAX(x2 - x1, 0);
+            price1 += MAX(x2 - u * x1 - K, 0) - MAX(x2 - u * x1, 0);
+            price2 += MAX(u * x2 - x1 - K, 0) - MAX(u * x2 - x1, 0);
         }
         break;
     case 'p':
@@ -243,9 +243,9 @@ static void margrabe2_0(const double T, const double S1, const double S2,
             z  = rho * (*e1) + sqrt(1.0 - SQR(rho)) * (*e2);
             x2 = S2 * mu2 * exp(z * v2 - 0.5 * SQR(v2));
 
-            price  += DMAX(K - (x2 - x1), 0) - DMAX(x1 - x2, 0);
-            price1 += DMAX(K - (x2 - u * x1), 0) - DMAX(u * x1 - x2, 0);
-            price2 += DMAX(K - (u * x2 - x1), 0) - DMAX(x1 - u * x2, 0);
+            price  += MAX(K - (x2 - x1), 0) - MAX(x1 - x2, 0);
+            price1 += MAX(K - (x2 - u * x1), 0) - MAX(u * x1 - x2, 0);
+            price2 += MAX(K - (u * x2 - x1), 0) - MAX(x1 - u * x2, 0);
         }
         break;
     case 's':
@@ -254,9 +254,9 @@ static void margrabe2_0(const double T, const double S1, const double S2,
             z  = rho * (*e1) + sqrt(1.0 - SQR(rho)) * (*e2);
             x2 = S2 * mu2 * exp( z  * v2 - 0.5 * SQR(v2));
 
-            price  += DABS(x2 - x1 - K) - DABS(x2 - x1);
-            price1 += DABS(x2 - u * x1 - K) - DABS(x2 - u * x1);
-            price2 += DABS(u * x2 - x1 - K) - DABS(u * x2 - x1);
+            price  += ABS(x2 - x1 - K) - ABS(x2 - x1);
+            price1 += ABS(x2 - u * x1 - K) - ABS(x2 - u * x1);
+            price2 += ABS(u * x2 - x1 - K) - ABS(u * x2 - x1);
         }
         break;
     default:
