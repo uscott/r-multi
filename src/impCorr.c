@@ -136,89 +136,88 @@ static void impCorr0(const double T, const double S1, const double S2,
    *******************************************************************/
 
 {
+    int it = 0;
+    double lower = 0, upper = 0, err, errUpper, errLower;
+    double lowerPrice = 0.0;
+    double upperPrice = 0.0;
+    double tmp[PEARSON0_PTR_LEN] = {0.0};
 
-  int it = 0;
-  double lower, upper, err, errUpper, errLower, width = 0.01;
-  double lowerPrice = 0.0;
-  double upperPrice = 0.0;
-  double tmp[PEARSON0_PTR_LEN] = {0.0};
+    /* Do some argument checking */
+    if (!impcorr)
+        error ("Null pointer passed where not allowed");
 
-  /* Do some argument checking */
-  if (!impcorr)
-    error ("Null pointer passed where not allowed");
+    if (!R_FINITE(*impcorr))
+        *impcorr = 0.9;
 
-  if (!R_FINITE(*impcorr))
-    *impcorr = 0.9;
+    if (ABS(*impcorr) > 1)
+        *impcorr = 0.9 * SIGN_OF(*impcorr);
 
-  if (ABS(*impcorr) > 1)
-    *impcorr = 0.9 * SIGN_OF(*impcorr);
+    QUIT_IF(!R_FINITE(mprice), *impcorr, NA_REAL);
+    QUIT_IF(mprice <= 0, *impcorr, NA_REAL);
 
-  QUIT_IF(!R_FINITE(mprice), *impcorr, NA_REAL);
-  QUIT_IF(mprice <= 0, *impcorr, NA_REAL);
+    pearson0(T, S1, S2, K, vol1, vol2,
+             /* rho = */ 0, r, q1,
+             q2, optype, nGrdPts,
+             /* calcDeltas = */ 0, tmp);
 
-  pearson0(T, S1, S2, K, vol1, vol2,
-           /* rho = */ 0, r, q1,
-           q2, optype, nGrdPts,
-           /* calcDeltas = */ 0, tmp);
-
-  QUIT_IF(!R_FINITE(tmp[PEARSON0_PRICE_INDEX]), *impcorr, NA_REAL);
+    QUIT_IF(!R_FINITE(tmp[PEARSON0_PRICE_INDEX]), *impcorr, NA_REAL);
   
-  maxit = MAX(maxit, 20);
+    maxit = MAX(maxit, 20);
 
-  /* Get upper and lower bounds for bisection */
-  getBounds(T, S1, S2,
-            K,  vol1,  vol2,
-            mprice,  r,  q1, 
-            q2, optype, nGrdPts,
-            tol, maxit, *impcorr,
-            &lower, &upper);
+    /* Get upper and lower bounds for bisection */
+    getBounds(T, S1, S2,
+              K,  vol1,  vol2,
+              mprice,  r,  q1, 
+              q2, optype, nGrdPts,
+              tol, maxit, *impcorr,
+              &lower, &upper);
   
 
-  QUIT_IF(!R_FINITE(upper) || !R_FINITE(lower), *impcorr, NA_REAL);
+    QUIT_IF(!R_FINITE(upper) || !R_FINITE(lower), *impcorr, NA_REAL);
 
-  pearson0(T, S1, S2, K, vol1, vol2,
-           /* rho = */ lower, r, q1,
-           q2, optype, nGrdPts,
-           /* calcDeltas = */ 0, tmp);
+    pearson0(T, S1, S2, K, vol1, vol2,
+             /* rho = */ lower, r, q1,
+             q2, optype, nGrdPts,
+             /* calcDeltas = */ 0, tmp);
 
-  upperPrice = tmp[PEARSON0_PRICE_INDEX];
+    upperPrice = tmp[PEARSON0_PRICE_INDEX];
 
-  pearson0(T, S1, S2, K, vol1, vol2,
-           /* rho = */ upper, r, q1,
-           q2, optype, nGrdPts,
-           /* calcDeltas = */ 0, tmp);
+    pearson0(T, S1, S2, K, vol1, vol2,
+             /* rho = */ upper, r, q1,
+             q2, optype, nGrdPts,
+             /* calcDeltas = */ 0, tmp);
   
-  lowerPrice = tmp[PEARSON0_PRICE_INDEX];
+    lowerPrice = tmp[PEARSON0_PRICE_INDEX];
 
-  QUIT_IF(lowerPrice > mprice || mprice > upperPrice, *impcorr, NA_REAL);
-  QUIT_IF(!R_FINITE(lowerPrice) || !R_FINITE(upperPrice), *impcorr, NA_REAL);
+    QUIT_IF(lowerPrice > mprice || mprice > upperPrice, *impcorr, NA_REAL);
+    QUIT_IF(!R_FINITE(lowerPrice) || !R_FINITE(upperPrice), *impcorr, NA_REAL);
+    
+    /* bisection */
+    it = 0;
 
-  /* bisection */
-  it = 0;
-
-  do {    
-    *impcorr  = 0.5 * (lower + upper);
-    err  = pearsonErr(T, S1, S2, K, vol1, vol2,
-                      *impcorr, r, q1, q2, optype, nGrdPts,
-                      mprice);
-    errLower = pearsonErr(T, S1, S2, K, vol1, vol2,
-                          lower, r, q1, q2, optype, nGrdPts,
+    do {    
+        *impcorr  = 0.5 * (lower + upper);
+        err  = pearsonErr(T, S1, S2, K, vol1, vol2,
+                          *impcorr, r, q1, q2, optype, nGrdPts,
                           mprice);
-    if (SIGN_OF(err) == SIGN_OF(errLower))
-      lower = *impcorr;
-    else {
-      errUpper = pearsonErr(T, S1, S2, K, vol1, vol2,
-                            upper, r, q1, q2, optype, nGrdPts,
-                            mprice);
-      if (SIGN_OF(err) == SIGN_OF(errUpper))
-        upper = *impcorr;
-      else
-        break;
-    }
-  } while (ABS(err) > tol && ++it < maxit);
+        errLower = pearsonErr(T, S1, S2, K, vol1, vol2,
+                              lower, r, q1, q2, optype, nGrdPts,
+                              mprice);
+        if (SIGN_OF(err) == SIGN_OF(errLower))
+            lower = *impcorr;
+        else {
+            errUpper = pearsonErr(T, S1, S2, K, vol1, vol2,
+                                  upper, r, q1, q2, optype, nGrdPts,
+                                  mprice);
+            if (SIGN_OF(err) == SIGN_OF(errUpper))
+                upper = *impcorr;
+            else
+                break;
+        }
+    } while (ABS(err) > tol && ++it < maxit);
 
-  if (ABS(err) > tol)
-    *impcorr = NA_REAL;
+    if (ABS(err) > tol)
+        *impcorr = NA_REAL;
   
 }
 #undef MAXIT
@@ -300,44 +299,43 @@ SEXP impCorr(SEXP tau, SEXP S1, SEXP S2, SEXP K,
              SEXP q1, SEXP q2, SEXP op_type, SEXP nGrdPts, 
              SEXP initGuess, SEXP tol, SEXP maxit)
 {  
-  int numprot = 0;
-  long N, i, vecLen;
-  const long grdPts = asInteger(nGrdPts);
-  SEXP ans;
+    int numprot = 0;
+    long N, i;
+    const long grdPts = asInteger(nGrdPts);
+    SEXP ans;
 
-  impCorr_chkargs(&tau, &S1, &S2, &K, 
-                  &vol1, &vol2, &mprice, &r, 
-                  &q1, &q2, &op_type,
-                  grdPts, &initGuess, &numprot);
+    impCorr_chkargs(&tau, &S1, &S2, &K, 
+                    &vol1, &vol2, &mprice, &r, 
+                    &q1, &q2, &op_type,
+                    grdPts, &initGuess, &numprot);
   
-  /* By now tau, S, K, mprice, r, q, op_type should all have same length */
+    /* By now tau, S, K, mprice, r, q, op_type should all have same length */
 
-  N = length(tau); 
+    N = length(tau); 
 
-  PROT2(ans = NEW_NUMERIC(N), numprot);
-  memcpy(REAL(ans), REAL(initGuess), N * sizeof(double));
+    PROT2(ans = NEW_NUMERIC(N), numprot);
+    memcpy(REAL(ans), REAL(initGuess), N * sizeof(double));
 
 
-  for (i = 0; i < N; i++)
-    impCorr0(REAL(tau)[i] / 365.0, REAL(S1)[i], REAL(S2)[i],
-             REAL(K)[i], REAL(vol1)[i], REAL(vol2)[i],
-             REAL(mprice)[i], REAL(r)[i], REAL(q1)[i],
-             REAL(q2)[i], *CHAR(GET_ELT(op_type, i)), /* nGrdPts */ 0,
-             asReal(tol), asInteger(maxit), REAL(ans) + i);
-
-  if (grdPts > 0)
     for (i = 0; i < N; i++)
-      impCorr0(REAL(tau)[i] / 365.0, REAL(S1)[i], REAL(S2)[i],
-               REAL(K)[i], REAL(vol1)[i], REAL(vol2)[i],
-               REAL(mprice)[i], REAL(r)[i], REAL(q1)[i],
-               REAL(q2)[i], *CHAR(GET_ELT(op_type, i)), grdPts,
-               asReal(tol), asInteger(maxit), REAL(ans) + i);
+        impCorr0(REAL(tau)[i] / 365.0, REAL(S1)[i], REAL(S2)[i],
+                 REAL(K)[i], REAL(vol1)[i], REAL(vol2)[i],
+                 REAL(mprice)[i], REAL(r)[i], REAL(q1)[i],
+                 REAL(q2)[i], *CHAR(GET_ELT(op_type, i)), /* nGrdPts */ 0,
+                 asReal(tol), asInteger(maxit), REAL(ans) + i);
+
+    if (grdPts > 0)
+        for (i = 0; i < N; i++)
+            impCorr0(REAL(tau)[i] / 365.0, REAL(S1)[i], REAL(S2)[i],
+                     REAL(K)[i], REAL(vol1)[i], REAL(vol2)[i],
+                     REAL(mprice)[i], REAL(r)[i], REAL(q1)[i],
+                     REAL(q2)[i], *CHAR(GET_ELT(op_type, i)), grdPts,
+                     asReal(tol), asInteger(maxit), REAL(ans) + i);
   
    
-  UNPROTECT(numprot);
+    UNPROTECT(numprot);
 
-  return ans;
-
+    return ans;
 }
 
 

@@ -14,7 +14,9 @@
 #include <string.h>
 #include "nrutil2.h"
 
-typedef double (*optimFun)(SEXP, SEXP);
+typedef double (*OptimFunc)( double *, long, void * );
+typedef double (*optimFun)( SEXP, SEXP );
+
 
 static const size_t DSIZE = sizeof(double);
 
@@ -81,8 +83,10 @@ GLOBAL long ensLenArg;
         R_NilValue \
     )
 
-
+#ifndef HUGE
 #define HUGE            (1e100)
+#endif 
+
 #define HUGE_NEGATIVE   (-HUGE)
 #define BS_PTR_LEN 3
 #define DIGITAL_PTR_LEN BS_PTR_LEN

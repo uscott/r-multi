@@ -510,21 +510,22 @@ void cmatrow2(const SEXP mat, const int i, char **ans)
   /*******************************************************************
    *
    *  Description: Puts the values of the i^th row of *character*
-   *    matrix mat into *ans[0], ..., *ans[ncols(mat) - 1].  
+   *    matrix mat into 
+   *    *ans[ 0 ], ..., *ans[ ncols( mat ) - 1 ].  
    *    Row indexing starts at 0.
    *
    *******************************************************************/
 
 {
-  const int m = nrows(mat);
-  const int n = ncols(mat);
-  int j;
+    const int m = nrows(mat);
+    const int n = ncols(mat);
+    int j;
 
-  if (!isMatrix(mat) || i < 0 || m <= i)
-    error ("bad argument passed to cmatrow1");
+    if( !isMatrix( mat ) || i < 0 || m <= i )
+        error ( "bad argument passed to cmatrow1" );
 
-  for (j = 0; j < n; j++)
-    *ans++ = CHAR(STRING_ELT(mat, m * j));
+    for( j = 0; j < n; ++j )
+        *ans++ = CHAR( STRING_ELT( mat, m * j ));
 }
 
 
@@ -1195,77 +1196,78 @@ SEXP unit_vector(SEXP x)
 
 
 
-SEXP num_deriv(SEXP fn, SEXP par, SEXP env)
+SEXP num_deriv( SEXP fn, SEXP par, SEXP env )
 
   /*******************************************************************
    *
    *  Description: Computes numeric derivative of function fn
    *    at the value par.
    *
-   *  Last modified:
-   *    Mar 03, 2003.
-   *
    *******************************************************************/
-
 {
-  const int n = length(par);
-  int numprot = 0; /* Counts number of PROTECTs called */
-  int i, ok;
-  double eps = sqrt(DOUBLE_EPS);
-  double val, valnew;
-  double *par_ptr, *par_new_ptr, *grad_ptr;
+    const int 
+        n = length(par);
+    int 
+        numprot = 0; /* Counts number of PROTECTs called */
+    int 
+        i, ok;
+    double 
+        eps = sqrt( DOUBLE_EPS );
+    double 
+        val, valnew;
+    double 
+        *par_ptr, *par_new_ptr, *grad_ptr;
 
-  SEXP gradient, R_fcall, par_new;
+    SEXP 
+        gradient = R_NilValue, R_fcall, par_new;
 
-  if(!isFunction(fn)) 
-    error("bad function input in feval");
-  if(!isEnvironment(env)) 
-    error("bad environment input in feval");
-  if(!isNumeric(par)) 
-    error("bad parameters input in feval");
+    if( !isFunction( fn )) 
+        error( "Bad function input in feval" );
+    if( !isEnvironment( env )) 
+        error( "Bad environment input in feval" );
+    if( !isNumeric( par )) 
+        error( "Bad parameters input in feval" );
 
-  PROT2(par     = AS_NUMERIC(par),       numprot);
-  PROT2(R_fcall = lang2(fn, R_NilValue), numprot);
+    PROT2( par     = AS_NUMERIC( par ),       numprot );
+    PROT2( R_fcall = lang2( fn, R_NilValue ), numprot );
 
-  SETCADR(R_fcall, par);
-  val = *REAL(eval(R_fcall, env));
+    SETCADR( R_fcall, par );
+
+    val = *REAL( eval( R_fcall, env ));
   
-  ok = R_FINITE(val);
+    ok = R_FINITE( val );
 
-  if (ok) {
+    if ( ok ) 
+    {
+        PROT2( gradient = NEW_NUMERIC( n ), numprot);
+        PROT2( par_new  = NEW_NUMERIC( n ), numprot);
 
-    PROT2(gradient = NEW_NUMERIC(n), numprot);
-    PROT2(par_new  = NEW_NUMERIC(n), numprot);
+        par_ptr = REAL(par);
+        par_new_ptr = REAL(par_new);
+        grad_ptr = REAL(gradient);
 
-    par_ptr = REAL(par);
-    par_new_ptr = REAL(par_new);
-    grad_ptr = REAL(gradient);
+        memcpy( par_new_ptr, par_ptr, n * sizeof( double ));
 
-    memcpy(par_new_ptr, par_ptr, n * sizeof(double));
+        for( i = 0; i < n; i++, ++grad_ptr, ++par_new_ptr)
+        {
+            *par_new_ptr += eps;
 
-
-    for (i = 0; i < n; i++, grad_ptr++, par_new_ptr++) {
-
-      *par_new_ptr += eps;
-
-      SETCADR(R_fcall, par_new);
+            SETCADR( R_fcall, par_new );
     
-      valnew = *REAL(eval(R_fcall, env));
+            valnew = *REAL( eval(R_fcall, env ));
 
-      ok = R_FINITE(valnew);
+            ok = R_FINITE( valnew );
 
-      *grad_ptr = ok ? (valnew - val) / eps : NA_REAL;
+            *grad_ptr = ok ? (valnew - val) / eps : NA_REAL;
 
-      *par_new_ptr -= eps;
+            *par_new_ptr -= eps;
+        }
 
     }
 
-  }
+    UNPROTECT( numprot );
 
-
-  UNPROTECT(numprot);
-
-  return(gradient);
+    return( gradient );
 }
 
 

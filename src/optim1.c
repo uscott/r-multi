@@ -10,11 +10,6 @@
 
 
 
-
-
-
-
-
 /**********************************************************************/
 /**********************************************************************/
 /**********************************************************************/
@@ -109,10 +104,10 @@ static int numDeriv2(optimFun f, SEXP x, SEXP controlPar,
 
 
 #define OPTIM_ANS_LEN 3
-#define OPTIM_ANS_NAMES {"par","value","convergence"}
-SEXP optimGradient1(optimFun f, SEXP initPar, SEXP controlPar,
-                    const double tol, const int relTol, 
-                    const int minimize, const long maxit)
+#define OPTIM_ANS_NAMES { "par","value","convergence" }
+SEXP optimGradient1( optimFun f, SEXP initPar, SEXP controlPar,
+                     const double tol, const int relTol, 
+                     const int minimize, const long maxit)
 
   /*******************************************************************
    *
@@ -123,7 +118,6 @@ SEXP optimGradient1(optimFun f, SEXP initPar, SEXP controlPar,
    *  Status: Not finished.
    *
    *******************************************************************/
-
 {
 	
   const double sgn  = minimize ? 1.0 : -1.0;
@@ -152,16 +146,17 @@ SEXP optimGradient1(optimFun f, SEXP initPar, SEXP controlPar,
   PROT2(gradient = NEW_NUMERIC(parLen), numprot);
   PROT2(par1     = NEW_NUMERIC(parLen), numprot);
   PROT2(par2     = NEW_NUMERIC(parLen), numprot);
-  PROT2(eps = NEW_NUMERIC(parLen), numprot);
+  PROT2(eps      = NEW_NUMERIC(parLen), numprot);
 
-  x = &par1;
+  x    = &par1;
   xNew = &par2;
 
   set_names(ans, ansNames);
 
   val1 = f(initPar, controlPar);
 
-  if (!R_FINITE(val1)) {
+  if (!R_FINITE(val1)) 
+  {
 
     SET_ELT(ans, 0, initPar);
     SET_ELT(ans, 1, ScalarReal(val1));
@@ -691,17 +686,17 @@ SEXP testOptim(SEXP initPar, SEXP controlPar, SEXP parLen, SEXP basePopSize,
 
   case 0:
 
-    ans = optimGa2(testOptimFun, initPar, controlPar,
-                   asInteger(parLen), asInteger(basePopSize),
-                   asInteger(stopLags), asInteger(minit), asInteger(maxit), 
-                   asInteger(minimize), asReal(tol), asInteger(relTol));
+    ans = optimGa2( testOptimFun, initPar, controlPar,
+                    asInteger(parLen), asInteger(basePopSize),
+                    asInteger(stopLags), asInteger(minit), asInteger(maxit), 
+                    asInteger(minimize), asReal(tol), asInteger(relTol));
     break;
     
   case 1:
 
-    ans = optimGradient2(testOptimFun, initPar, controlPar,
-                         asReal(tol), asInteger(relTol),
-                         asInteger(minimize), asInteger(maxit));
+    ans = optimGradient2( testOptimFun, initPar, controlPar,
+                          asReal(tol), asInteger(relTol),
+                          asInteger(minimize), asInteger(maxit));
 
     break;
 

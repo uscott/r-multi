@@ -118,98 +118,97 @@ static void bsd1(const int Tlen, const double *T,
    *******************************************************************/
 
 {
-  register int i, ok;
-  register double d1, d2, tau, x, Nd1, divDiscFac, intDiscFac, ctr;
+    register int i, ok;
+    register double d1, d2, tau, x, Nd1, divDiscFac, intDiscFac, ctr;
 
-  bsd1_chk(Tlen, T, S, K, vol, r, q, hedgePeriod, optionType, del);
+    bsd1_chk(Tlen, T, S, K, vol, r, q, hedgePeriod, optionType, del);
 
-  /* First compute del[0] & del[Tlen] */
+    /* First compute del[0] & del[Tlen] */
 
-  tau = *T / 365.0;
-  x   = log(*S / K);
+    tau = *T / 365.0;
+    x   = log(*S / K);
 
-  d1  = (x + (r - q + 0.5 * SQR(*vol)) * tau) / (*vol * sqrt(tau));
-  d2  = d1 - *vol * sqrt(tau);
+    d1  = (x + (r - q + 0.5 * SQR(*vol)) * tau) / (*vol * sqrt(tau));
+    d2  = d1 - *vol * sqrt(tau);
 
-  Nd1  = pnorm(d1, 0, 1, 1, 0);
-  divDiscFac  = exp(-q * tau);
-  intDiscFac  = exp(-r * tau);
+    Nd1  = pnorm(d1, 0, 1, 1, 0);
+    divDiscFac  = exp(-q * tau);
+    intDiscFac  = exp(-r * tau);
 
-  if ('c' == optionType) {
-
-    del[0]    = divDiscFac * Nd1;
-    del[Tlen] = S[Tlen] > K ? 1.0 : 0.0;
-
-  }
-  else if ('p' == optionType) {
-
-    del[0]    = divDiscFac * (Nd1 - 1.0);
-    del[Tlen] = K > S[Tlen] ? -1.0 : 0.0;
-
-  }
-  else if ('s' == optionType) {
-
-    del[0]    = divDiscFac * (2.0 * Nd1 - 1.0);
-    del[Tlen] = SIGN_OF(S[Tlen] - K);
-
-  }
-  else
-    del[0] = del[Tlen] = NA_REAL;
-
-  /* Get rest of deltas */
-  for (i = 1, ctr = 0; i < Tlen; i++) {
-
-    ok = R_FINITE(T[i]) && R_FINITE(S[i]) && 
-         T[i] >= 0      && vol[i] >= 0    && T[i - 1] > T[i];
-    
-    if (!ok)
-      break;
-
-    ctr += T[i - 1] - T[i];
-
-    if (ctr < hedgePeriod)
-
-      del[i] = del[i - 1];
-
-    else {
-
-      ctr = 0;
-
-      tau = T[i] / 365.0;
-      x   = log(S[i] / K);
-
-      d1  = x + (r - q + 0.5 * SQR(vol[i])) * tau;
-      d1 /= vol[i] * sqrt(tau);
-
-      d2  = d1 - vol[i] * sqrt(tau);
-
-      Nd1 = pnorm(d1, 0, 1, 1, 0);
-
-      divDiscFac  = exp(-q * tau);
-
-      switch(optionType) {
-
-      case 'c':
-        del[i] = divDiscFac *  Nd1;
-        break;
-      case 'p':
-        del[i] = divDiscFac * (Nd1 - 1.0);
-        break;
-      case 's':
-        del[i] = divDiscFac * (2.0 * Nd1 - 1.0);
-        break;
-      default:
-        del[i] = NA_REAL;
-        break;
-
-      }
-      
+    if ('c' == optionType) 
+    {
+        del[ 0 ]    = divDiscFac * Nd1;
+        del[ Tlen ] = S[Tlen] > K ? 1.0 : 0.0;
     }
+    else if ('p' == optionType) 
+    {
+        del[0]    = divDiscFac * (Nd1 - 1.0);
+        del[Tlen] = K > S[Tlen] ? -1.0 : 0.0;
 
+    }
+    else if ('s' == optionType) 
+    {
 
-  }
+        del[0]    = divDiscFac * (2.0 * Nd1 - 1.0);
+        del[Tlen] = SIGN_OF(S[Tlen] - K);
 
+    }
+    else
+        del[0] = del[Tlen] = NA_REAL;
 
+    /* Get rest of deltas */
+    for (i = 1, ctr = 0; i < Tlen; i++) 
+    {
+
+        ok = R_FINITE(T[i]) && R_FINITE(S[i]) && 
+            T[i] >= 0      && vol[i] >= 0    && T[i - 1] > T[i];
+    
+        if (!ok)
+            break;
+
+        ctr += T[i - 1] - T[i];
+
+        if (ctr < hedgePeriod)
+
+            del[i] = del[i - 1];
+
+        else 
+        {
+
+            ctr = 0;
+
+            tau = T[i] / 365.0;
+            x   = log(S[i] / K);
+          
+            d1  = x + (r - q + 0.5 * SQR(vol[i])) * tau;
+            d1 /= vol[i] * sqrt(tau);
+      
+            d2  = d1 - vol[i] * sqrt(tau);
+
+            Nd1 = pnorm(d1, 0, 1, 1, 0);
+
+            divDiscFac  = exp(-q * tau);
+
+            switch(optionType) 
+            {
+
+                case 'c':
+                    del[i] = divDiscFac *  Nd1;
+                    break;
+                case 'p':
+                    del[i] = divDiscFac * (Nd1 - 1.0);
+                    break;
+                case 's':
+                    del[i] = divDiscFac * (2.0 * Nd1 - 1.0);
+                    break;
+                default:
+                    del[i] = NA_REAL;
+                    break;
+
+            }
+            
+        }
+    }
 }
 
 
