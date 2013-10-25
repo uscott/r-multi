@@ -366,11 +366,12 @@ void dperm(double *x, const long n);
 void unif_rand_uri(double *u, const long n, int jiggle, int perm, int rep);
 void norm_rand_uri(double *z, const long n, int jiggle, int perm, int rep);
 SEXP num_deriv(SEXP par, SEXP fn, SEXP env);
-SEXP vector_norm(SEXP x);
-SEXP unit_vector(SEXP x);
-SEXP feval(SEXP par, SEXP fn, SEXP env);
-SEXP getListElt(SEXP list, const char *str);
-SEXP kalman1(SEXP yr, SEXP Hr_tr, SEXP Fr, SEXP Qr, SEXP Rr, SEXP xr, SEXP Ar_tr);
+SEXP vector_norm( SEXP x );
+SEXP unit_vector( SEXP x );
+SEXP feval( SEXP par, SEXP fn, SEXP env );
+SEXP getListElt( SEXP list, const char *str );
+SEXP kalman1(SEXP yr, SEXP Hr_tr, SEXP Fr, SEXP Qr, 
+             SEXP Rr, SEXP xr, SEXP Ar_tr);
 SEXP sortedUniqueInteger(SEXP t);
 int iEltOf(long val, SEXP t, long *index);
 void sortWithIndex2(double *x, double *y, long n);
@@ -388,6 +389,3 @@ void drev(long len, const double *in, double *out);
 void dmult(long len, const double *in1, const double *in2, double *out);
 SEXP cum_corr(SEXP x, SEXP y, SEXP reverse);
 #endif /* URI_H */
-
-
-    
