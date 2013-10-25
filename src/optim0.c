@@ -232,7 +232,7 @@ SEXP OptimGradient01( OptimFunc f,
                       const int minimize, 
                       const long maxit)
 {  
-    int 
+    int
         numprot = 0;
     long 
         j, m, n;

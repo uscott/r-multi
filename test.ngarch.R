@@ -2,28 +2,52 @@ library(uri)
 
 ######################################################################
 
-exDts = c( "2012-09-01", "2012-10-01" )
+exDts = c( "2013-11-01", "2013-12-01" )
 
 lambda = 0*0.05
 a0     = 2.5e-5 + 0*0.30^2 / 365
 a1     = 1*0.06
-b1     = 1*0.85
-gamma  = 0.5
+b1     = 1*0.7
+gamma  = 1.0
 
-pars = c(lambda, a0, a1, b1, gamma)
+pars = c( a0, a1, b1, gamma )
 
 
 n   = 2e3
-tmp = simNgarch11(n, paths = 1, par = pars, z = NULL)
-x   = tmp$x[,1]
+sim = sim.ng11( n, paths = 2, par = pars, z = NULL )
+x   = sim$x[,1]
+y   = sim$x[,2]
 
-plot( x )
+matplot( apply( sim$x, 2, diffinv ), type = "l", lty = 1 )
 
-tmp1 = fitNgarch11( x, stopLag=50, maxit = 5e3, tol = 1e-3,
-    fitInit = TRUE, option = list(grad = FALSE))
+fit1 = fit.ng11( x, init = c( var( x ), rep( .01, 3 )),
+    stopLag = 50, maxit = 5e3, tol = 1e-3,
+    option = list( grad = TRUE ))
 
-tmp1 = fitNgarch11( x, init = tmp1$par, pop = 10,
-    stopLag = 1, minit = 100, maxit = 5e3, fitInit = T, opt = list( grad = FALSE ))
+fit1 = fit.ng11( x,
+    init = 0*c( var( x ), rep( .01, 3 ))+1*fit1$par,
+    pop = 10,
+    stopLag = 1, minit = 100, maxit = 5e3, 
+    opt = list( grad = TRUE ))
+
+fit2 = fit.ng11( y, init = c( var( y ), rep( .01, 3 )),
+    stopLag = 50, maxit = 5e3, tol = 1e-3,
+    option = list( grad = TRUE ))
+
+fit2 = fit.ng11( y,
+    init = 0*c( var( y ), rep( .01, 3 ))+1*fit2$par,
+    pop = 10,
+    stopLag = 1, minit = 100, maxit = 5e3, 
+    opt = list( grad = TRUE ))
+
+
+
+fit0 = fit.ng11.opcl( x, y,
+    ##init = 0*c( var( c( x, y )), rep( .01, 3 )) + 1*fit$par,
+    init = as.vector( 0.5 * fit1$par + 0.5 * fit2$par ),
+    pop = 10, stopLag = 1, minit = 100, maxit = 5e3, 
+    opt = list( grad = TRUE ))
+
 
 basefit      = tmp1
 modInfo      = tmp1
