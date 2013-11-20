@@ -1,65 +1,63 @@
 
-
-
-fillNAfwd = function(x)
+fillNAfwd = fill.naf = function(x)
 {
-    .Call( "fillNAfwd", x, PACKAGE = "uri" )
+    return( .Call( "fillNAfwd", x, PACKAGE = "uri" ))
 }
 
 
 
-fillNAbkwd = function(x)
+fillNAbkwd = fill.nab = function(x)
 {
-    .Call("fillNAbkwd", x, PACKAGE = "uri")
+    return( .Call( "fillNAbkwd", x, PACKAGE = "uri" ))
 }
 
 
 
-summary2 = function(x, maxCols = 100)
+summary2 = function( x, maxCols = 100 )
 {
-
-    if (is.matrix( x ) | is.data.frame( x ))
-    {
+    if( is.matrix( x ) | is.data.frame( x ))
         if ( ncol(x) > maxCols )
         {
             x = x[ , 1 : maxCols ]
 
-            warning("Only displaying some columns")
-        }        
-    }
+            warning( "Only displaying some columns" )
+        }
 
-    summary(x)
+    return( summary( x ))
 }
 
 
 
-segment = function(x, b, e = 0)
+segment = function( x, b, e = 0 )
 {
-    isMatrixLike = is.matrix(x) | is.data.frame(x)
+    isMatrixLike = is.matrix( x ) | is.data.frame( x )
     
     if ( missing( e ))
-        e = ifelse( isMatrixLike, nrow(x), length(x) )
+        e = ifelse( isMatrixLike, nrow( x ), length( x ) )
     
     if ( isMatrixLike )
-        x[ b:e, , drop = FALSE ]
+        return( x[ b:e, , drop = FALSE ] )
     else
-        x[ b:e ]
+        return( x[ b:e ] )
 }
 
 
 
 lo = function( n = 10 )
 {
-    z = sapply( ls(".GlobalEnv"), function(x) object.size(get(x)))
+    z             = sapply(
+        ls( ".GlobalEnv" ),
+        function(x) object.size( get( x )))
     
-    ans = as.matrix(rev(sort(z))[1:n])
-    colnames(ans) = "bytes"
-    ans[which.not.na(ans[,"bytes"]), , drop = FALSE]    
+    ans             = as.matrix( rev( sort( z ))[ 1 : n ])
+    colnames( ans ) = "bytes"
+
+    ans[ which.not.na( ans[ , "bytes" ]), , drop = FALSE ]    
 }
 
 
 
-permTest = function(x, y, f = mean, R = 2e3 - 1, loop = FALSE)
+permTest = perm.test = function(x, y, f = mean, R = 2e3 - 1, loop = FALSE)
     ##
     ##  Description: Permutation test for difference in functions.
     ##               Gives p-value of f(x) - f(y) under the hypothesis
@@ -69,151 +67,132 @@ permTest = function(x, y, f = mean, R = 2e3 - 1, loop = FALSE)
 {
     s0 = f(x) - f(y)
 
-    stopifnot(1 == length(s0))
+    stopifnot( 1 == length( s0 ))
     
-    nx = length(x)
-    ny = length(y)
-    x  = c(x, y)
-    s  = rep(NA, R)
+    nx = length( x )
+    ny = length( y )
+    x  = c( x, y )
+    s  = rep( NA, R )
 
-    if (loop)
+    if( loop )
     {
-        for (b in seq(R))
+        for ( b in 1:R )
         {
-
-            x    = sample(x)
-            s[b] = f(x[1:nx]) - f(x[1:ny + nx])
-            
+            x      = sample( x )
+            s[ b ] = f( x[ 1:nx ]) - f( x [ 1:ny + nx ])            
         }
     }
     else
     {
+        g = function( n ) sample( x )
+        x = sapply( 1:R, g )
 
-        g = function(n) sample(x)
-        x = sapply(seq(R), g)
-
-        stopifnot(nrow(x) == nx + ny)
+        stopifnot( nrow(x) == nx + ny )
         
-        s = apply(x[1:nx, ], 2, f) - apply(x[1:ny + nx, ], 2, f)
+        s = apply( x[ 1:nx, ], 2, f ) - apply( x[ 1:ny + nx, ], 2, f )
     }
 
-    (1 + length(which(s >= s0))) / (1 + R)
-    
+    return( ( 1 + length( which( s >= s0 ))) / ( 1 + R ))    
 }
-
-
 
 
 
 ######################################################################
 
-
-newey.west.se = nwse = function(lin.model, q)
+newey.west.se = nwse = function( lin.model, q )
     ##
     ##  Description: Returns the vector of Newey-West
     ##    heteroskedasticity & autocorrelation-consistent
     ##    standard errors corresponding to the lags
     ##    given in argument q.
     ##
-
 {
-
-    n = nrow(lin.model$x)
-    x = lin.model$x
-    y = lin.model$y
-    u = lin.model$res
+    n  = nrow( lin.model$x )
+    x  = lin.model$x
+    y  = lin.model$y
+    u  = lin.model$res
     
-    Qi  = solve(crossprod(x)/n)
+    Qi = solve( crossprod( x ) / n )
 
-    w = x * u
+    w  = x * u
 
-    ans = matrix(NA, nrow(Qi), length(q))
-    rownames(ans) = colnames(x)
-    colnames(ans) = q
+    ans             = matrix( NA, nrow( Qi ), length( q ))
+    rownames( ans ) = colnames( x )
+    colnames( ans ) = q
 
-    if (length(q)) {
-        
-        for (k in 1:length(q)) {
-            
-            S = 1/n * crossprod(w)
+    if( length( q ))
+        for( k in 1:length( q ))
+        {            
+            S = 1/n * crossprod( w )
 
-            if (q[k]) {
-                
-                for (i in 1:q[k]) {
-                    
-                    gamma = 1/n * t(w[seq(n - q[k]), ]) %*% w[seq(q[k] + 1, n), ]
+            if ( q[ k ] )
+                for ( i in 1:q[ k ] )
+                {                    
+                    gamma = 1/n *
+                        t( w[ seq( n - q[k] ), ]) %*% w[ seq( q[k] + 1, n ), ]
 
-                    S = S + (1 - i / (q[k] + 1)) * (gamma + t(gamma))
+                    S = S + ( 1 - i / ( q[k] + 1 )) * ( gamma + t( gamma ))
                     
                 }
-                
-            }
             
-            ans[, k] = sqrt(diag(1/n * Qi %*% S %*% Qi))
-            
-        }
-        
-    }
+            ans[, k] = sqrt( diag( 1/n * Qi %*% S %*% Qi ))
+        }       
 
-    ans
-    
+    return( ans )    
 }
-
 
 
 
 ## White's heteroskedasticity-consistent standard error
-wse = function(model, method = 1)
+wse = function( model, method = 1 )
 {
-    if (class(model) == "numeric")
-        model = lm(as.vector(model) ~ 1, x = TRUE, y = TRUE)
-    stopifnot (class(model) == "lm")
-    method = method[1]
+    if( class( model ) == "numeric" )
+        model = lm( as.vector( model ) ~ 1, x = TRUE, y = TRUE )
     
-    y = model$y
-    X = model$x
-    n = nrow(X)
-    K = ncol(X)
-
-    Sxx  = crossprod(X)/n
-    Sxxi = solve(Sxx)
-    ehat = as.double(model$res)
+    stopifnot( class( model ) == "lm" )
     
-    if (method %in% 1:2) {
+    method = method[ 1 ]     
+    y      = model$y
+    X      = model$x
+    n      = nrow( X )
+    K      = ncol( X )
 
-        denom = ifelse(1 == method, n, n - K)
+    Sxx    = crossprod( X ) / n
+    Sxxi   = solve( Sxx )
+    ehat   = as.double( model$res )
+    
+    if ( method %in% 1:2 )
+    {
+        denom = ifelse( 1 == method, n, n - K )
         
-        S = crossprod(ehat * X)/denom
+        S = crossprod( ehat * X ) / denom
+    }
+    else if ( method %in% 3:4 )
+    {
+        g = function( z ) t( z ) %*% Sxxi %*% z
 
-    } else if (method %in% 3:4) {
+        p = apply( X, 1, g )
 
-        g = function(z)
-            t(z) %*% Sxxi %*% z
-
-        p = apply(X, 1, g)
-
-        d = ifelse(3 == method, 1, 2)
-        S = crossprod(ehat / (1-p)^d * X)/n
-        
+        d = ifelse( 3 == method, 1, 2 )
+        S = crossprod( ehat / ( 1 - p )^d * X ) / n
     }
 
-    sqrt(diag(Sxxi %*% S %*% Sxxi) / n)
-    
+    return( sqrt( diag( Sxxi %*% S %*% Sxxi ) / n ))    
 }
 
 
 
-wtstat = function(model, method = 1)
+wtstat = function( model, method = 1 )
 {
-    if (class(model)=="numeric")
-        model = lm(as.vector(model) ~ 1, x = TRUE, y = TRUE)
-    model$coef / wse(model, method = method)
+    if ( class( model ) == "numeric" )
+        model = lm( as.vector( model ) ~ 1, x = TRUE, y = TRUE )
+    
+    return( model$coef / wse( model, method = method ))
 }
 
 
 
-
-lm.se.boot = function(model, R = 2e3)
+lm.se.boot = function( model, R = 2e3 )
 {
     n    = nrow( model$x )
     x    = model$x
@@ -221,14 +200,12 @@ lm.se.boot = function(model, R = 2e3)
     u    = model$res
     p    = length( model$coef )
     
-    coef.boot = matrix(NA, R, p)
+    coef.boot = matrix( NA, R, p )
 
-    for (b in seq( R ))
-    {
+    for( b in 1:R )
         coef.boot[ b, ] = lm( yhat + sample( u, rep = TRUE) ~ 0 + x)$coef
-    }
 
-    apply(coef.boot, 2, sd)
+    return( apply( coef.boot, 2, sd ))
 }
 
 
@@ -246,73 +223,65 @@ lm.se.boot = function(model, R = 2e3)
 
 
 
-read.yahoo = function(file)
+read.yahoo = function( file )
 {
-
-    ans = read.csv(file, as.is = TRUE, comment.char = "")
+    ans          = read.csv( file, as.is = TRUE, comment.char = "" )
     
-    names(ans) = tolower(names(ans))
-    ans$date   = as.character(strptime(ans$date, format = "%m/%d/%y"))
+    names( ans ) = tolower( names( ans ))
+    ans$date     = as.character( strptime( ans$date, format = "%m/%d/%y" ))
 
-    ix  = sort(posixToChron(ans$date), index = TRUE)$ix
-    ans = ans[ix, ]
+    ix  = sort( posixToChron( ans$date ), index = TRUE )$ix
+    ans = ans[ ix, ]
     
     row.names(ans) = ans$date
     ans$date       = NULL
 
-    ans$lclose  = log(ans$close)
-    ans$lreturn = c(NA, diff(ans$lclose))
-    ans$t       = difftime.uri(row.names(ans), "2000-01-01")
-    ans$dt      = ans$t - lag2(ans$t, 1)
+    ans$lclose  = log( ans$close )
+    ans$lreturn = c( NA, diff( ans$lclose ))
+    ans$t       = difftime.uri( row.names( ans ), "2000-01-01" )
+    ans$dt      = ans$t - lag2( ans$t, 1 )
     
-    ans
+    return( ans )
 }
 
 
 
-
-read.fed.data = function(file, cts = TRUE)
+read.fed.data = function( file, cts = TRUE )
 {
-
-    ans = read.table(file, skip = 30, as.is = TRUE, comment.char = "")
+    ans = read.table( file, skip = 30, as.is = TRUE, comment.char = "" )
     
-    names(ans) = c("date", "rate")
+    names( ans ) = c( "date", "rate" )
     
-    ans$date = as.char(strptime(ans$date, format = "%m/%d/%Y"))
+    ans$date = as.char( strptime( ans$date, format = "%m/%d/%Y" ))
     ans$rate = 0.01 * ans$rate ## Convert to straight decimals
 
-    if (cts)
-        ans$rate = log((1 + ans$rate / 365)^365)
+    if( cts )
+        ans$rate = log( ( 1 + ans$rate / 365 )^365 )
     
-    row.names(ans)  = ans$date
-    names(ans$rate) = ans$date
-    ans$date = NULL
+    row.names( ans )  = ans$date
+    names( ans$rate ) = ans$date
+    ans$date          = NULL
 
-    ans
+    return( ans )
 }
-
 
 
 ######################################################################
 
-
-aic = function(ll, npar)
+aic = function( ll, npar )
 {
     -2 * ll + 2 * npar
 }
 
-bic = function(ll, npar, N)
+bic = function( ll, npar, N )
 {
-    -2 * ll + npar * log(N)
+    -2 * ll + npar * log( N )
 }
-
 
 
 ######################################################################
 
-
-
-exDatesEquities = function(mth, yr, exp.hr = 16, exp.min = 30)
+exDatesEquities = function( mth, yr, exp.hr = 16, exp.min = 30 )
 {
     ##
     ##  Description: Finds the 3rd friday of the month,
@@ -322,118 +291,115 @@ exDatesEquities = function(mth, yr, exp.hr = 16, exp.min = 30)
     ##    need to be adjusted for the time zone.
     ##
 
+    return( NULL )
+    
     require(chron)
     
-    mth = sort(unique(mth))
-    yr  = sort(unique(yr))
+    mth = sort( unique( mth ))
+    yr  = sort( unique( yr ))
+
+    dts = outer( mth, yr, function( u, v ) paste( u, 1, v, sep = "/" ))    
+    dts = chron( as.vector( dts ))
+
+    n        = length( dts )
+    friFound = rep( FALSE, n )
     
-    dts =
-        chron(as.vector(outer(mth, yr, function(u, v) paste(u, 1, v, sep = "/"))))
+    knownMths   = paste( 6:9, "/01/2003", sep = "" )
+    knownMths   = chron( knownMths )
+    knownExpDts = c( "6/20/2003", "7/18/2003", "8/15/2003", "9/19/2003" )
+    knownExpDts = chron( knownExpDts )
 
-    n         = length(dts)
-    friFound = rep(FALSE, n)
-
-    
-    knownMths = paste(6:9, "/01/2003", sep="")
-    knownMths   = chron(knownMths)
-    knownExpDts = c("6/20/2003", "7/18/2003", "8/15/2003", "9/19/2003")
-    knownExpDts = chron(knownExpDts)
-
-    ix = dts %in% knownMths
-    dts[ix] = knownExpDts[knownMths %in% dts]
-    friFound[ix] = TRUE
+    ix             = dts %in% knownMths
+    dts[ ix ]      = knownExpDts[ knownMths %in% dts ]
+    friFound[ ix ] = TRUE
     
     repeat
     {
+        ind = which( "Fri" == as.char( weekdays( dts )) & !friFound )
 
-        ind = which("Fri" == as.char(weekdays(dts)) & !friFound)
-
-        friFound[ind] = TRUE
+        friFound[ ind ] = TRUE
         
-        if (n == length(which(friFound)))
+        if ( n == length( which( friFound )))
             break
         else
-            dts[!friFound] = dts[!friFound] + 1
-
+            dts[ !friFound ] = dts[ !friFound ] + 1
     }
 
-    dts[!ix] = dts[!ix] + 14
+    dts[ !ix ] = dts[ !ix ] + 14
 
-    ans = as.char(chronToPosix(dts))
-    ans.names = paste(as.char(months(dts)), as.char(years(dts)), sep = "")
-    
-    ans = as.char(chronToPosix(dts))
-    exp.time = paste(exp.hr, exp.min, "00", sep = ":")
-    ans = paste(ans, exp.time)
+    ans        = as.char( chronToPosix( dts ))
+    ans.names  = paste(
+        as.char( months( dts )),
+        as.char( years( dts )),
+        sep = "" )
+    ans        = as.char( chronToPosix( dts ))
+    exp.time   = paste( exp.hr, exp.min, "00", sep = ":" )
+    ans        = paste( ans, exp.time)
     names(ans) = ans.names
 
-    ans
+    return( ans )
 }
 
 
 
-
-
-daysToExEquities = function(mth, yr,
-t0 = strptime(as.char(Sys.time()), format = "%Y-%m-%d %H:%M:%S"),
-exp.hr  = 16,
-exp.min = 30)
+daysToExEquities = function(
+    mth,
+    yr,
+    t0         = strptime(
+        as.char( Sys.time()),
+        format = "%Y-%m-%d %H:%M:%S" ),
+    exp.hr     = 16,
+    exp.min    = 30)
 {
     ##
     ##  Description:  Finds number of calender days until expiration
     ##    of the equity options contract for the given month and year.
     ##
 
-    ex.dts = exDatesEquities(mth, yr,
-    exp.hr = exp.hr, exp.min = exp.min)
+    ex.dts = exDatesEquities(
+        mth,
+        yr,
+        exp.hr = exp.hr,
+        exp.min = exp.min )
 
-    tau = as.double(as.POSIXlt(ex.dts) - t0)
-    names(tau) = names(ex.dts)
+    tau          = as.double( as.POSIXlt( ex.dts ) - t0 )
+    names( tau ) = names( ex.dts )
 
-    tau
+    return( tau )
 }
-
-
-
-
 
 
 
 exDatesNG = function(mth, yr, type = "f")
 {
-
-    mth  = as.integer(mth[1])
-    yr   = as.integer(yr[1])
-    type = as.char(tolower(substr(type[1], 1, 1)))
+    mth  = as.integer( mth[ 1 ] )
+    yr   = as.integer( yr[ 1 ] )
+    type = as.char( tolower( substr( type[ 1 ], 1, 1 )))
     
     ndays = 0
-    ans   = chron(paste(mth, 1, yr, sep = "/"))
+    ans   = chron( paste( mth, 1, yr, sep = "/" ))
 
-    numDaysBack = ifelse("f" == type, 3, 4)
+    numDaysBack = ifelse( "f" == type, 3, 4 )
     
-    repeat {
-
+    repeat
+    {
         ans = ans - 1
 
-        if (!is.weekend(ans))
+        if ( !is.weekend( ans ))
             ndays = ndays + 1
 
-        if (ndays >= numDaysBack)
+        if ( ndays >= numDaysBack )
             break
     }
 
-    chronToPosix(ans)
-    
+    return( chronToPosix( ans ))
 }
-
-
 
 
 ######################################################################
 
 
-
-match.names = function(x = NULL, y = NULL, list = NULL)
+match.names = function( x = NULL, y = NULL, list = NULL )
     ##
     ##  Description:
     ##    Matches up names of vectors/matrices/data.frames.
@@ -441,93 +407,81 @@ match.names = function(x = NULL, y = NULL, list = NULL)
     ##    of common observations or NULL if there are none.
     ##
 {
-    if (!is.null(x) & !is.null(y))
-        list = list(x = as.data.frame(x), y = as.data.frame(y))
+    if ( !is.null( x ) & !is.null( y ))
+        list = list( x = as.data.frame( x ), y = as.data.frame( y ))
 
     n = length(list)
     
-    if (is.null(names(list)) & n)
-        names(list) = paste("x", seq(n), sep = "")
+    if ( is.null( names(list)) & n )
+        names( list ) = paste( "x", 1:n, sep = "" )
     
-    ans = as.data.frame(list[[1]])
-
+    ans = as.data.frame( list[[1]] )
     
-    if (2 <= n) 
-        for (i in 2:n) {
-            
-            tmp       = as.data.frame(list[[i]])
-            ind       = intersect(rownames(ans), rownames(tmp))
-            x1        = as.data.frame(ans[ind, ])
-            names(x1) = names(ans)
-            x2        = as.data.frame(tmp[ind, ])
-            names(x2) = names(tmp)
-            ans       = cbind(x1, x2)
-            
+    if( 2 <= n ) 
+        for ( i in 2:n )
+        {            
+            tmp       = as.data.frame( list[[ i ]])
+            ind       = intersect( rownames( ans ), rownames( tmp ))
+            x1        = as.data.frame( ans[ ind, ])
+            names(x1) = names( ans )
+            x2        = as.data.frame( tmp[ ind, ])
+            names(x2) = names( tmp )
+            ans       = cbind( x1, x2 )            
         }
 
-    names(ans) = names(list)
+    names( ans ) = names( list )
     
-    ans
+    return( ans )
 }
-
-
 
 
 ######################################################################
 
 
-rm.uri = function(..., list = character(0), envir = .GlobalEnv)
+rm.uri = function( ..., list = character( 0 ), envir = .GlobalEnv )
     ##
     ##   Description: Removes all objects in the given environment whose
     ##    name contains the given character strings.
     ##
 {
-
-    x = as.character(substitute(list(...)))[-1]
-    x = .Primitive("c")(list, x)
+    x = as.character( substitute( list( ... )))[ -1 ]
+    x = .Primitive( "c" )( list, x )
     
-    for (a in x)
-        for (b in ls(envir = envir))
-            if (length(grep(a, b))) rm(list = b, envir = envir)
-
+    for( a in x )
+        for( b in ls( envir = envir ))
+            if( length( grep(a, b))) rm( list = b, envir = envir )
 }
 
 
 
-rm3 = function() {
-
-    rm.uri(tmp)
-    rm.uri(Tmp)
-    rm.uri(.warn)
-
-}
-
-
-detach.pkg = function(name)
+rm3 = function()
 {
-    name = as.character(substitute(name))
-
-    detach(pos = match(paste("package:", name, sep = ""), search()))
+    rm.uri( tmp )
+    rm.uri( Tmp )
+    rm.uri( .warn )
 }
 
+
+detach.pkg = function( name )
+{
+    name = as.character( substitute( name ))
+
+    detach( pos = match( paste( "package:", name, sep = "" ), search()))
+}
 
 
 
 reattach.pkg = function(name)
 {
-    pkgname = as.character(substitute(name))
+    pkgname = as.character( substitute( name ))
     
-    detach(pos = match(paste("package:", pkgname, sep = ""), search()))
-    library(pkgname, character.only = TRUE)
+    detach( pos = match(paste( "package:", pkgname, sep = "" ), search()))
+    library( pkgname, character.only = TRUE )
 }
-
-
-
 
 
 ######################################################################
 ## Convenience functions
-
 
 
 id       = function(x) x
@@ -536,46 +490,42 @@ is.char  = function(x) is.character(x)
 as.posix = function(x) as.POSIXlt(x)
 
 
-last = function(x, num = 1)
-    x[seq(length(x) + 1 - num, length(x))]
+last = function( x, num = 1 )
+    x[ seq( length( x ) + 1 - num, length( x )) ]
 
-last.row = function(x, num = 1)
-    x[seq(nrow(x) + 1 - num, nrow(x)), ]
+last.row = function( x, num = 1 )
+    x[ seq( nrow( x ) + 1 - num, nrow( x )), ]
 
 
-dropLast = function(x, num = 1)
+dropLast = drop.last = function( x, num = 1 )
 {
-
     n = length(x)
 
     stopifnot (num < n)
 
-    x[-seq(n - num + 1, n)]
-    
+    return( x[ -seq( n - num + 1, n ) ] )
 }
 
 
-randomRows  = function(x, num = 1, ordered = TRUE)
+randomRows = random.rows = function( x, num = 1, ordered = TRUE )
 {
-    ix = sample(nrow(x), num, rep = FALSE)
+    ix = sample( nrow(x), num, rep = FALSE)
 
-    if (ordered)
-        ix = sort(ix)
-    
-    x[ix, ]
-    
+    if( ordered )
+        return( x[ sort( ix ), ] )
+    else
+        return( x[ ix, ] )    
 }
 
 
 
-matplot.uri = function(x, y, ...)
-    matplot(x, y, type = "b", lty = 1, ...)
-
+matplot.uri = function( x, y, ... )
+    matplot( x, y, type = "b", lty = 1, ... )
 
 
 difftime.uri = difftime2 = dtime = function(dt1, dt2)
 {
-    as.integer(round(difftime(as.POSIXlt(dt1), as.POSIXlt(dt2), units = "d")))
+    as.integer( round(difftime(as.POSIXlt(dt1), as.POSIXlt(dt2), units = "d" )))
 }
 
 
@@ -590,51 +540,46 @@ days.in.month = function(month, year)
 
 posixToChron = function(dts)
 {
-    chron(as.character(as.POSIXlt(dts)), format = "y-m-d", out.format = "m/d/y")
+    chron( as.character( as.POSIXlt( dts )),
+          format     = "y-m-d",
+          out.format = "m/d/y" )
 }
 
-chronToPosix = function(dts)
+chronToPosix = function( dts )
 {
-    strptime(as.character(dts), format = "%m/%d/%y")
+    strptime( as.character( dts ), format = "%m/%d/%y" )
 }
 
 
-maxDate = function(dt1, dt2)
-{
+maxDate = function( dt1, dt2 )
+{    
+    dt1 = as.POSIXlt( dt1 )
+    dt2 = as.POSIXlt( dt2 )
     
-    dt1 = as.POSIXlt(dt1)
-    dt2 = as.POSIXlt(dt2)
-    ifelse(dt1 > dt2, dt1, dt2)
-    
+    return( ifelse( dt1 > dt2, dt1, dt2 ))
 }
 
 
 minDate = function(dt1, dt2)
-{
+{    
+    dt1 = as.POSIXlt( dt1 )
+    dt2 = as.POSIXlt( dt2 )
     
-    dt1 = as.POSIXlt(dt1)
-    dt2 = as.POSIXlt(dt2)
-    ifelse(dt1 < dt2, dt1, dt2)
-    
+    return( ifelse( dt1 < dt2, dt1, dt2 ))
 }
 
 
-sortDates = function(dts)
-    chronToPosix(sort(posixToChron(unique(dts))))
+sortDates = function( dts )
+    chronToPosix( sort( posixToChron( unique( dts ))))
 
 
-
-
-seq.char.dts = function(date1, date2)
+seq.char.dts = function( date1, date2 )
 {
+    date1 = posixToChron( date1 )
+    date2 = posixToChron( date2 )
 
-    date1 = posixToChron(date1)
-    date2 = posixToChron(date2)
-
-    as.char(chronToPosix(seq(date1, date2)))
-    
+    as.char( chronToPosix( seq( date1, date2 )))    
 }
-
 
 
 monthnum = function(mth)
@@ -644,49 +589,47 @@ monthnum = function(mth)
     ##    to the corresponding integer 0-11.
     ##
 {
-    mth = substr(mth, 1, 3)
+    mth = substr( mth, 1, 3 )
     
-    strptime(paste(mth, 1, 2001, sep = "/"), format = "%b/%d/%Y")$mon
+    strptime( paste( mth, 1, 2001, sep = "/" ), format = "%b/%d/%Y" )$mon
 }
 
 ######################################################################
 
-varRatio = function(x, maxOrder)
+varRatio = function( x, maxOrder )
 {
-
     .Call("varRatio", x, maxOrder, package = "util.uri")
-    
 }
 
-
-
 ######################################################################
-
 
 cum.mean = function(x)
 {
-    cumsum(x) / seq(length(x))
+    cumsum(x) / seq( length( x ))
 }
 
-cum.var = function(x, na.rm = TRUE, reverse = FALSE)
+
+cum.var = function( x, na.rm = TRUE, reverse = FALSE )
 {
-    if (na.rm)
-        x = x[!is.na(x)]
+    if( na.rm )
+        x = x[ !is.na( x ) ]
 
-    if (reverse)
-        x = rev(x)
-    
-    ans = cumsum(x^2) / seq(length(x)) - (cumsum(x) / seq(length(x)))^2
+    if( reverse )
+        x = rev( x )
 
-    if (reverse)
-        ans = rev(ans)
+    x   = x - cumsum( x ) / seq( length( x ))
+    ans = cumsum( x^2 ) / seq( length( x ))
 
-    ans
+    if( reverse )
+        return( rev( ans ))
+    else
+        return( ans )
 }
+
 
 cum.moment = function(x, n)
 {
-    cumsum(x^n) / seq(length(x))
+    cumsum( x^n ) / seq( length( x ))
 }
 
 ###################################################################
@@ -694,9 +637,8 @@ cum.moment = function(x, n)
 
 
 
-rollApply = function(y, fn, order, ...)
-{
-    
+rollApply = function( y, fn, order, ... )
+{    
     .Call("roll_apply",
           as.double(y),
           function(x) fn(x, ...),
@@ -708,20 +650,26 @@ rollApply = function(y, fn, order, ...)
 
 
 
-movAvg = function(y, order) {
-    ans = .C("m_avg", as.double(y), as.integer(order),
-    as.integer(length(y)), ans = double(length(y)),
-    NAOK = TRUE,
-    PACKAGE = "uri")$ans
+movAvg = function(y, order)
+{
+    ans = .C(
+        "m_avg",
+        as.double(y),
+        as.integer(order),
+        as.integer( length( y )),
+        ans = double(length( y )),
+        NAOK = TRUE,
+        PACKAGE = "uri")$ans
 
-    names(ans) = names(y)
+    names( ans ) = names( y )
 
     ans
 }
 
 
 
-movMax = function(y, order) {
+movMax = function(y, order)
+{
     ans = .C("m_max", as.double(y), as.integer(order),
     as.integer(length(y)), ans = double(length(y)),
     NAOK = TRUE,
@@ -749,7 +697,8 @@ movMin = function(y, order)
 
 
 
-seq.dates.uri = function(from, to, by = "days", length, ...) {
+seq.dates.uri = function(from, to, by = "days", length, ...)
+{
     
     ans = seq.dates(posixToChron(from), posixToChron(to), by, length, ...)
     strptime(as.character(ans), format = "%m/%d/%y")
@@ -758,7 +707,8 @@ seq.dates.uri = function(from, to, by = "days", length, ...) {
 
 subscript = function(x, index) x[[index]]
 
-between = function(y, x) {
+between = function(y, x)
+{
     ## returns i s.t. x[i] <= y < x[i + 1]
     ## NB output has same length as y.
     ifelse(max(x) <= y, length(x), apply(outer(x, y, "<="), 2, which.min) - 1)
@@ -770,33 +720,6 @@ between = function(y, x) {
 
 circle = function(f, g) function(x) f(g(x))
 
-
-
-######################################################################
-## Functions related to the vol run-up stuff I did.
-
-
-
-localVar2 = function(t0, t1, vol, a = 67.87, alpha = 0.77) {
-    ## t0, t1 are in calender days
-    t1 = t1 / 365; t0 = t0 / 365; a = a / 365
-    C = vol^2*(t1 + a)^alpha
-    C * {(1 - alpha) * (t1 - t0) + a}*{t1 - t0 + a}^{-alpha - 1}
-}
-
-
-
-cumVar2 =  function(t0, t1, vol, a = 67.87, alpha = 0.77) {
-    t1 = t1/365; t0 = t0 / 365; a = a/365
-    C = vol^2 * (t1 + a)^alpha
-    t1 * C * (t1 + a)^-alpha - (t1 - t0) * C * (t1 - t0 + a)^-alpha
-}
-
-
-
-vol2fn =  function(t0, t1, vol, a = 67.87, alpha = 0.77) {
-    sqrt(cumVar2(t0, t1, vol, a, alpha) / t1 * 365)
-}
 
 ######################################################################
 
@@ -812,7 +735,8 @@ which.not.na = function(x) which(!is.na(x))
 
 
 
-optionPayoff = function(S, K, posn = 1, optionType = "c") {
+optionPayoff = function(S, K, posn = 1, optionType = "c")
+{
     ##
     ##  Description: Payoff functions for various option positions.
     ##
@@ -854,7 +778,8 @@ optionPayoff = function(S, K, posn = 1, optionType = "c") {
 
 delta.to.strike = dtoK = function(tau, S, vol,
                   delta, optionType = "c",
-                  r = 0, q = r) {
+                  r = 0, q = r)
+{
 
     .Call("deltaToStrike", tau, S, vol, delta, optionType, r, q)
 
@@ -923,8 +848,8 @@ eps   = NULL)
 
 #############################################################################
 
-bisectMethod = function(fn, lower, upper, tol = 1e-3, maxit = 1e2) {
-    ## Last modified 3-Dec-2002.
+bisectMethod = function(fn, lower, upper, tol = 1e-3, maxit = 1e2)
+{
     ## Find zeros using bisection method
 
     if (0 == fn(lower))
@@ -1132,8 +1057,8 @@ skew = function(x, na.rm = TRUE) {
 }
 
 
-skew2 = function(x) {
-    ## Last modified 6/14/02.
+skew2 = function(x)
+{
     x = x[ !is.na(x) ]
     m = mean( x )
     s = sd( x )
@@ -1142,20 +1067,18 @@ skew2 = function(x) {
 }
 
 
-kurt = function(x, na.rm = TRUE, type = "excess") {
-    ## Last modified 12-Jan-2002.
-
-    if (na.rm)
-        x   = x[!is.na(x)]
+kurt = function(x, na.rm = TRUE, type = "excess")
+{
+    if ( na.rm )
+        x   = x[ !is.na( x )]
     
     ans = mean((x - mean(x))^4) / var.ml(x)^2
-    ifelse(type == "excess", ans - 3, ans)
-    
+    ifelse(type == "excess", ans - 3, ans)    
 }
 
 
-kurt2 = function(x, type = "excess") {
-    ## Last modified 6/14/02.
+kurt2 = function(x, type = "excess")
+{
     x = x[ !is.na(x) ]
     m = mean( x )
     s = sd( x )
@@ -1320,69 +1243,84 @@ sample.uri = function(n, size = 1, rep = FALSE, sorted = TRUE)
 
 
 
-mvtunif.uri = function(n, d = 2, jiggle = TRUE, permute = TRUE,
-replace = FALSE)
+mvtunif.uri = function(
+    n,
+    d       = 2,
+    jiggle  = TRUE,
+    permute = TRUE,
+    replace = FALSE )
 {
+    if ( d == 1 )
+    {
+        return( unif.uri( n, jig = jiggle, rep = replace, perm = permute ))
+    }
+    else if( d >= 2 )
+    {
+        ans = x = seq( 0.5 / n, 1 - 0.5 / n, length = n )
 
-    if (d == 1) {
-
-        unif.uri(n, jig = jiggle, rep = replace, perm = permute)    
-        
-    } else if (d >= 2) {
-
-        ans = x = seq(0.5 / n, 1 - 0.5 / n, length = n)
-
-        for (j in seq(2, d)) {
-            
-            ans = apply(as.matrix(ans), 2, rep, times = n)
-            tmp = rep(x, times = rep(n^(j - 1), n))
-            ans = cbind(ans, tmp)
-            
+        for (j in seq(2, d))
+        {            
+            ans = apply( as.matrix(ans), 2, rep, times = n )
+            tmp = rep( x, times = rep( n^(j - 1), n ))
+            ans = cbind( ans, tmp ) 
         }
 
-        if (jiggle)
-            ans = ans + (1/n) * matrix(runif(n^d * d, -0.5, 0.5), n^d, d)
+        if ( jiggle )
+            ans = ans + (1/n) * matrix( runif( n^d * d, -0.5, 0.5 ), n^d, d )
 
-        if (permute) 
-            ans = ans[sample(nrow(ans), rep = replace), ]
+        if ( permute ) 
+            ans = ans[ sample( nrow( ans ), rep = replace ), ]
 
-        colnames(ans) = NULL
+        colnames( ans ) = NULL
         
-        ans
-    } else NA
+        return( ans )
+    }
+    else
+        return( NA )
 }
 
 
 
 
-bvtnorm.uri = function(n, rho = 0.0,
-jiggle = TRUE, permute = FALSE, replace = FALSE)
+bvtnorm.uri = function(
+    n,
+    rho     = 0.0,
+    jiggle  = TRUE,
+    permute = FALSE,
+    replace = FALSE )
 {
+    ans = .Call( "bvt_normuri", n, rho, jiggle, PACKAGE = "uri" )
 
-    ans = .Call("bvt_normuri", n, rho, jiggle, PACKAGE = "uri")
-
-    if (permute)
-        ans = ans[sample(nrow(ans), rep = replace), ]
+    if ( permute )
+        ans = ans[ sample( nrow(ans), rep = replace ), ]
 
     ans
     
 }
 
 
-mvtnorm.uri = function(n, d = 2, jiggle = TRUE,
-permute = TRUE, replace = FALSE)
+mvtnorm.uri = function(
+    n,
+    d       = 2,
+    jiggle  = TRUE,
+    permute = TRUE,
+    replace = FALSE )
 {
-    qnorm(mvtunif.uri(n, d, jiggle, permute, replace))
+    qnorm( mvtunif.uri( n, d, jiggle, permute, replace ))
 }
 
 
-vector.norm = function(x) {sqrt(sum(x^2))}
+vector.norm = function(x) { sqrt( sum( x^2 )) }
 
 
-
-
-sim.gbm = function(vol, nticks, freq = 365, paths = 1, S = 1,
-mu = 0, terminal.only = FALSE)
+sim.gbm = function(
+    vol,
+    nticks,
+    freq          = 365,
+    paths         = 1,
+    S             = 1,
+    mu            = 0,
+    terminal.only = FALSE )
     ##
     ##  Description: Returns an n x path matrix if terminal.only is
     ##    FALSE and a vector of length = paths otherwise.  nticks
@@ -1392,23 +1330,26 @@ mu = 0, terminal.only = FALSE)
     ##    corresponds to one tick == one day.
     ##
 {
-
-    if (terminal.only) {
-        
+    if ( terminal.only )
+    {        
         tau   = nticks / freq
-        e     = rnorm(paths, m = (mu - 0.5 * vol^2) * tau, s = vol * sqrt(tau))
-        S * exp(e)
+        e     = rnorm(
+            paths,
+            m = ( mu - 0.5 * vol^2 ) * tau,
+            s = vol * sqrt( tau ))
         
-    } else {
-
+        return( S * exp( e ))
+    }
+    else
+    {
         dt = 1.0 / freq;
         m  = (mu - 0.5 * vol^2) * dt;
         s  = vol * sqrt(dt);
         
-        e      = rnorm(nticks * paths, m = m, s = s)
-        dim(e) = c(nticks, paths)
-        drop(S * exp(apply(e, 2, diffinv)))
+        e        = rnorm(nticks * paths, m = m, s = s )
+        dim( e ) = c( nticks, paths )
         
+        return( drop( S * exp( apply( e, 2, diffinv ))))        
     }
     
 }
@@ -1425,8 +1366,8 @@ list.union = function(list)
 
     n = length(list)
 
-    if (2 <= n)
-        for (i in seq(2, n)) ans = union(ans, as.vector(list[[i]]))
+    if( 2 <= n )
+        for( i 2:n ) ans = union( ans, as.vector( list[[ i ]] ))
 
     ans
     
@@ -1434,16 +1375,15 @@ list.union = function(list)
 
 
 list.intersect = function(list)
-{
+{    
+    stopifnot( is.list( list ))
     
-    stopifnot(is.list(list))
-    
-    ans = unique(list[[1]])
+    ans = unique( list[[ 1 ]] )
 
-    n = length(list)
+    n = length( list )
 
-    if (2 <= n)
-        for (i in seq(2, n)) ans = intersect(ans, list[[i]])
+    if( 2 <= n )
+        for( i in 2:n ) ans = intersect( ans, list[[ i ]] )
 
     ans
     
@@ -1454,45 +1394,47 @@ list.intersect = function(list)
 ## This is similar to the R "stack" function.
 join.list = function(list, join.names = TRUE)
 {
-    stopifnot(is.list(list))
+    stopifnot( is.list( list ))
     ans = NULL
 
-    n = length(list)
+    n = length( list )
 
-    if (n > 1 & join.names & is.null(names(list)))
-        names(list) = paste("L", seq(n), sep = "")
+    if( n > 1 & join.names & is.null(names(list)) )
+        names( list ) = paste( "L", 1:n, sep = "" )
     
-    if (n)
-        for (i in seq(1, n)) {
-            
-            if (join.names) {
+    if( n )
+        for( i in 1:n )
+        {            
+            if (join.names)
+            {                
+                if ( is.null( names(list[[ i ]])))
+                    names(list[[i]]) =
+                        paste( "x", seq( length( list[[ i ]] )), sep = "")
                 
-                if (is.null(names(list[[i]])))
-                    names(list[[i]]) = paste("x", seq(length(list[[i]])), sep = "")
-                
-                names(list[[i]]) = paste(names(list)[i], names(list[[i]]), sep = ".")
+                names( list[[i]] ) =
+                    paste(
+                        names( list )[ i ],
+                        names( list[[ i ]]), sep = ".")
             }
             
-            ans = c(ans, list[[i]])
+            ans = c( ans, list[[ i ]])
         }
     
-    ans
+    return( ans )
 }
 
 
 
 ## Stacks lists of matrices or data.frames
-stack.matrix = function(list)
+stack.matrix = function( list )
 {
-    n = length(list)
+    n   = length( list )
+    ans = list[[ 1 ]]
 
-    ans = list[[1]]
-
-    if (n > 1)
-        for (i in 2:n) {
-
-            ans = rbind(ans, list[[i]])
-            
+    if( n > 1 )
+        for( i in 2:n )
+        {
+            ans = rbind(ans, list[[i]])            
         }
 
     ans
@@ -1505,60 +1447,64 @@ stack.matrix = function(list)
 ######################################################################
 
 
-chol.pseudo = function(X,
-method = c("Nelder-Mead", "BFGS", "CG", "L-BFGS-B", "SANN"),
-num.init = 20)
+chol.pseudo = function(
+    X,
+    method = c("Nelder-Mead", "BFGS", "CG", "L-BFGS-B", "SANN"),
+    num.init = 20 )
 {
-    ## Last modified 7/6/02.
     ## Finds square upper-triangular matrix A that
-    ## minimizes the squared distance between X and t(A)%*%A.
+    ## minimizes the squared distance between X and t(A) %*% A.
 
-    stopifnot(all(is.matrix(X), dim(X)[1] == dim(X)[2]))
-    options(show.error.messages = FALSE)
-    A = try(chol(X))
-    if (is.numeric(A))
+    stopifnot( all( is.matrix(X), dim( X )[ 1 ] == dim( X )[ 2 ]))
+    
+    options( show.error.messages = FALSE )
+    
+    A = try( chol( X ))
+    
+    if ( is.numeric( A ))
         val = 0
-    else {
-        n = nrow(X)
-        num.init = ifelse(num.init[1] < 1, 1, round(abs(num.init[1])))
-        ind.upper = upper.tri(X, diag = TRUE)
+    else
+    {
+        n         = nrow( X )
+        num.init  = ifelse( num.init[1] < 1, 1, round( abs( num.init[ 1 ])))
+        ind.upper = upper.tri( X, diag = TRUE )
         
-        fcn0 = function(A.upper) {
-            A1 = matrix(0, n, n)
+        fcn0 = function( A.upper )
+        {
+            A1            = matrix(0, n, n)
             A1[ind.upper] = A.upper
-            dim(A1) = dim(X)
-            sum((t(A1) %*% A1 - X)^2)
+            dim(A1)       = dim(X)
+
+            return( sum(( t( A1 ) %*% A1 - X )^2))
         }
         
         val = Inf
-        A =  matrix(0, n, n)
+        A   = matrix(0, n, n)
         
-        for(k in seq(num.init)) {
-
-            par.init = rnorm(0.5 * n * (n + 1))
-            tmp = optim(par.init, fcn0, method = method[1])
-            val.new = tmp$val
+        for( k in 1:num.init )
+        {
+            par.init = rnorm( 0.5 * n * ( n + 1 ))
+            tmp      = optim( par.init, fcn0, method = method[ 1 ])
+            val.new  = tmp$val
             
-            if(val.new < val) {
-                A[indices.upper] = tmp$par
+            if( val.new < val )
+            {
+                A[ indices.upper ] = tmp$par
                 val = val.new
             }
             
         }
     }
 
-    list(matrix = A, distance = sqrt(val))
-    
+    list( matrix = A, distance = sqrt( val ))    
 }
 
 ######################################################################
 
 
-## This computes a single sharpe ratio
-sharpe.ratio = function(x, na.rm = TRUE)
+## This computes a single "absolute" sharpe ratio
+sharpe.ratio = function( x, na.rm = TRUE )
 {
-    ## Last modified 03-Feb-2003.
-
     mean(x, na.rm = na.rm) / sd(x, na.rm = na.rm)
 }
 
