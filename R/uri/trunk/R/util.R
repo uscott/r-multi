@@ -1367,7 +1367,7 @@ list.union = function(list)
     n = length(list)
 
     if( 2 <= n )
-        for( i 2:n ) ans = union( ans, as.vector( list[[ i ]] ))
+        for( i in 2:n ) ans = union( ans, as.vector( list[[ i ]] ))
 
     ans
     
