@@ -4,15 +4,18 @@ useDynLib( uri )
 
 
 # Export all names
+export( as.char )
+export( is.char )
+
+export( interp.lin )
+export( interp.vol.sfc )
+
 export( bs )
 export( bs2 )
 export( fill.nab )
 export( fill.naf )
-export( fillNAfwd )
 export( fit.ng11 )
 export( fit.ng11.opcl )
-##export( get.dist.ng11 )
-##export( get.vols.ng11 )
 export( impvol )
 export( perm.test )
 export( read.yahoo )
