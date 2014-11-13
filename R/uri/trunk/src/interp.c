@@ -1,36 +1,115 @@
 #include "uri.h"
 
+
+void interp_lin( long    len,
+                 double *x_in,
+                 double *y_in,
+                 double  x0,
+                 double *y_out )
+{
+    const double
+        TOL = 1e-10;    
+    double
+        max_sprd = -1, tmp_sprd, sprd_lower, sprd_upper,
+        x1, x2, y1, y2, w1, w2;
+    int
+        found_lower = 0, found_upper = 0;    
+    long 
+        i;
+    
+    /* Get max sprd from x0 */
+    for( i = 0; i < len; ++i )
+        if( ( tmp_sprd = ABS( x_in[ i ] - x0 )) > max_sprd )
+            max_sprd = tmp_sprd;      
+
+    sprd_lower = sprd_upper = max_sprd + 1;
+
+    for( i = 0; i < len; ++i )
+    {
+        tmp_sprd = ABS( x_in[ i ] - x0 );
+        
+        if( x_in[ i ] <  x0 && tmp_sprd < sprd_lower )
+        {
+            sprd_lower = tmp_sprd;
+            x1 = x_in[ i ];
+            y1 = y_in[ i ];            
+            found_lower = 1;            
+        }
+        
+        if( x_in[ i ] >= x0 && tmp_sprd < sprd_upper )
+        {
+            sprd_upper = tmp_sprd;
+            x2 = x_in[ i ];
+            y2 = y_in[ i ];            
+            found_upper = 1;            
+        }        
+    }
+    
+    if( !found_lower || ABS( x2 - x0 ) < TOL )
+        *y_out = y2;
+    else if( !found_upper )
+        *y_out = y1;
+    else
+    {
+        w1 = ( x2 - x0 ) / ( x2 - x1 );
+        w2 = ( x0 - x1 ) / ( x2 - x1 );
+        
+        *y_out = w1 * y1 + w2 * y2;        
+    }    
+}
+
+
+SEXP R_interp_lin( SEXP x_in, SEXP y_in, SEXP x0 )
+{
+    long x0_len = length( x0 ), i;
+    SEXP y_out  = NEW_NUMERIC( x0_len );
+    PROTECT( y_out );
+    
+    for( i = 0; i < x0_len; ++i )
+        interp_lin( length( x_in ), 
+                    REAL( x_in ), 
+                    REAL( y_in ), 
+                    REAL( x0 )[ i ], 
+                    REAL( y_out ) + i );
+    
+    UNPROTECT( 1 );
+
+    return y_out;   
+}
+
+
+
+
 void interp_vol_sfc( long    len,
                      double *t,
                      double *m, 
                      double *v, 
-                     double  m0, 
                      double  t0, 
+                     double  m0, 
                      double *v_out )
 {
     const double 
-        TOL = 1e-10;    
+        TOL = 1e-10;
+    const int
+        BUF_LEN = 64;    
     double 
-        t_sprd_max = -1, m_sprd_max = -1,
+        sprd_max = -1,
         tmp, sprd_lower = -1, sprd_upper = -1,
-        t1, t2, m11, m12, m21, m22, v11, v12, v21, v22;    
+        t1, t2, v1, v2, fwd_var,
+        *ptm, *ptv, m_buf[ BUF_LEN ], v_buf[ BUF_LEN ];
     int
-        found_lower_t = 0, found_upper_t = 0,
-        found_lower_m = 0, found_upper_m = 0;
+        found_lower = 0, found_upper = 0, use_buf = 0;
     long 
-        i, k1, k2;
+        i, len_loc;
     
     /* Get max sprd from t0 */
     for( i = 0; i < len; ++i )
-    {        
-        if( ( tmp = ABS( t[ i ] - t0 )) > t_sprd_max )
-            t_sprd_max = tmp;    
-
-        if( ( tmp = ABS( m[ i ] - m0 )) > m_sprd_max )
-            m_sprd_max = tmp;        
-    }
+        if( ( tmp = ABS( t[ i ] - t0 )) > sprd_max )
+            sprd_max = tmp;
     
-    for( i = 0, sprd_lower = sprd_upper = t_sprd_max + 1; i < len; ++i )
+    sprd_lower = sprd_upper = sprd_max + 1;    
+
+    for( i = 0; i < len; ++i )
     {
         tmp = ABS( t[ i ] - t0 );
         
@@ -38,57 +117,97 @@ void interp_vol_sfc( long    len,
         {
             t1 = t[ i ];
             sprd_lower = tmp;
-            found_lower_t = 1;            
+            found_lower = 1;            
         }
     
         if( t[ i ] >= t0 && tmp < sprd_upper )
         {
             t2 = t[ i ];
             sprd_upper = tmp;
-            found_upper_t = 1;            
+            found_upper = 1;            
         }        
     }
-    
-    if( found_lower_t )
-    {
-        for( i = 0, sprd_lower = sprd_upper = m_sprd_max + 1; i < len; ++i )
-        {
-            if( ABS( t[ i ] - t1 ) > TOL )
-                continue;
-            
-            tmp = ABS( m[ i ] - m0 );            
 
-            if( m[ i ] <  m0 && tmp < sprd_lower )
+    use_buf = len <= BUF_LEN;
+    
+    if( use_buf )
+    {
+        ptm = ( double * ) m_buf;
+        ptv = ( double * ) v_buf;        
+    }
+    else
+    {
+        ptm = ( double * ) malloc( len * sizeof( double ));
+        ptv = ( double * ) malloc( len * sizeof( double ));
+    }    
+    
+    if( found_lower )
+    {
+        len_loc = 0;
+        
+        for( i = 0; i < len; ++i )
+            if( ABS( t[ i ] - t1 ) < TOL )
             {
-                m11 = m[ i ];
-                sprd_lower = tmp;
-                found_lower_m = 1;                
-            }
-            
-            if( m[ i ] >= m0 && tmp < sprd_upper )
-            {
-                m12 = m[ i ];
-                sprd_upper = tmp;
-                found_upper_m = 1
+                ptm[ len_loc ] = m[ i ];
+                ptv[ len_loc ] = v[ i ];
+                ++len_loc;                
             }            
-        }
+
+        interp_lin( len_loc, ptm, ptv, m0, &v1 );        
+    }
+    
+    if( found_upper )
+    {
+        len_loc = 0;
         
-        if( found_lower_m && found_upper_m )
-        {
-        }
+        for( i = 0; i < len; ++i )
+            if( ABS( t[ i ] - t2 ) < TOL )
+            {
+                ptm[ len_loc ] = m[ i ];
+                ptv[ len_loc ] = v[ i ];
+                ++len_loc;                
+            }
         
+        interp_lin( len_loc, ptm, ptv, m0, &v2 );
     }
-    
-    if( found_upper_t )
+
+    if( !found_lower || ABS( t2 - t0 ) < TOL )
+        *v_out = v2;
+    else if( !found_upper )
+        *v_out = v1;
+    else
     {
+        fwd_var = MAX( 0, ( v2 * v2 * t2 - v1 * v1 * t1 ) / ( t2 - t1 ));
+        
+        *v_out  = sqrt( ( v1 * v1 * t1 + fwd_var * ( t0 - t1 )) / t0 );        
     }
     
-    if( !found_lower_t )
+
+    if( !use_buf )
     {
+        free( ptm );
+        free( ptv );        
     }
     
-    if( !found_upper_t )
-    {
-    }
+}
+
+
+SEXP R_interp_vol_sfc( SEXP t_in, SEXP m_in, SEXP v_in, SEXP t_arg, SEXP m_arg )
+{
+    long arg_len = length( m_arg ), len_in = length( m_in ), i;
+    SEXP v_out = NEW_NUMERIC( arg_len );
+    PROTECT( v_out );
+
+    for( i = 0; i < arg_len; ++i )
+        interp_vol_sfc( len_in,
+                        REAL( t_in ),
+                        REAL( m_in ),
+                        REAL( v_in ),
+                        REAL( t_arg )[ i ],
+                        REAL( m_arg )[ i ],
+                        REAL( v_out ) + i );
     
+    UNPROTECT( 1 );
+
+    return v_out;    
 }
