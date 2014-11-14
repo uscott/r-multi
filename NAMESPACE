@@ -7,8 +7,8 @@ useDynLib( uri )
 export( as.char )
 export( is.char )
 
-export( interp.lin )
-export( interp.vol.sfc )
+export( interp.crv )
+export( interp.sfc )
 
 export( bs )
 export( bs2 )
