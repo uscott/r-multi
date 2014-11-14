@@ -1,7 +1,7 @@
 #include "uri.h"
 
 
-void interp_lin( long    len,
+void interp_crv( long    len,
                  double *x_in,
                  double *y_in,
                  double  x0,
@@ -59,14 +59,14 @@ void interp_lin( long    len,
 }
 
 
-SEXP R_interp_lin( SEXP x_in, SEXP y_in, SEXP x0 )
+SEXP R_interp_crv( SEXP x_in, SEXP y_in, SEXP x0 )
 {
     long x0_len = length( x0 ), i;
     SEXP y_out  = NEW_NUMERIC( x0_len );
     PROTECT( y_out );
     
     for( i = 0; i < x0_len; ++i )
-        interp_lin( length( x_in ), 
+        interp_crv( length( x_in ), 
                     REAL( x_in ), 
                     REAL( y_in ), 
                     REAL( x0 )[ i ], 
@@ -80,7 +80,7 @@ SEXP R_interp_lin( SEXP x_in, SEXP y_in, SEXP x0 )
 
 
 
-void interp_vol_sfc( long    len,
+void interp_sfc( long    len,
                      double *t,
                      double *m, 
                      double *v, 
@@ -95,7 +95,7 @@ void interp_vol_sfc( long    len,
     double 
         sprd_max = -1,
         tmp, sprd_lower = -1, sprd_upper = -1,
-        t1, t2, v1, v2, fwd_var,
+        t1, t2, v1, v2, w1, w2, fwd_var,
         *ptm, *ptv, m_buf[ BUF_LEN ], v_buf[ BUF_LEN ];
     int
         found_lower = 0, found_upper = 0, use_buf = 0;
@@ -153,7 +153,7 @@ void interp_vol_sfc( long    len,
                 ++len_loc;                
             }            
 
-        interp_lin( len_loc, ptm, ptv, m0, &v1 );        
+        interp_crv( len_loc, ptm, ptv, m0, &v1 );        
     }
     
     if( found_upper )
@@ -168,7 +168,7 @@ void interp_vol_sfc( long    len,
                 ++len_loc;                
             }
         
-        interp_lin( len_loc, ptm, ptv, m0, &v2 );
+        interp_crv( len_loc, ptm, ptv, m0, &v2 );
     }
 
     if( !found_lower || ABS( t2 - t0 ) < TOL )
@@ -177,9 +177,10 @@ void interp_vol_sfc( long    len,
         *v_out = v1;
     else
     {
-        fwd_var = MAX( 0, ( v2 * v2 * t2 - v1 * v1 * t1 ) / ( t2 - t1 ));
+        w1 = ( t2 - t0 ) / ( t2 - t1 );        
+        w2 = ( t0 - t1 ) / ( t2 - t1 );
         
-        *v_out  = sqrt( ( v1 * v1 * t1 + fwd_var * ( t0 - t1 )) / t0 );        
+        *v_out = w1 * v1 + w2 * v2;        
     }
     
 
@@ -192,20 +193,20 @@ void interp_vol_sfc( long    len,
 }
 
 
-SEXP R_interp_vol_sfc( SEXP t_in, SEXP m_in, SEXP v_in, SEXP t_arg, SEXP m_arg )
+SEXP R_interp_sfc( SEXP t_in, SEXP m_in, SEXP v_in, SEXP t_arg, SEXP m_arg )
 {
     long arg_len = length( m_arg ), len_in = length( m_in ), i;
     SEXP v_out = NEW_NUMERIC( arg_len );
     PROTECT( v_out );
 
     for( i = 0; i < arg_len; ++i )
-        interp_vol_sfc( len_in,
-                        REAL( t_in ),
-                        REAL( m_in ),
-                        REAL( v_in ),
-                        REAL( t_arg )[ i ],
-                        REAL( m_arg )[ i ],
-                        REAL( v_out ) + i );
+        interp_sfc( len_in,
+                    REAL( t_in ),
+                    REAL( m_in ),
+                    REAL( v_in ),
+                    REAL( t_arg )[ i ],
+                    REAL( m_arg )[ i ],
+                    REAL( v_out ) + i );
     
     UNPROTECT( 1 );
 
