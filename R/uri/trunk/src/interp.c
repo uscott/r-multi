@@ -79,14 +79,15 @@ SEXP R_interp_crv( SEXP x_in, SEXP y_in, SEXP x0 )
 
 
 
-
 void interp_sfc( long    len,
-                     double *t,
-                     double *m, 
-                     double *v, 
-                     double  t0, 
-                     double  m0, 
-                     double *v_out )
+                 double *t,
+                 double *m, 
+                 double *v, 
+                 double  t0, 
+                 double  m0, 
+                 double *v_out, 
+                 double *m_buf,
+                 double *v_buf )
 {
     const double 
         TOL = 1e-10;
@@ -96,9 +97,9 @@ void interp_sfc( long    len,
         sprd_max = -1,
         tmp, sprd_lower = -1, sprd_upper = -1,
         t1, t2, v1, v2, w1, w2, fwd_var,
-        *ptm, *ptv, m_buf[ BUF_LEN ], v_buf[ BUF_LEN ];
+        buf1[ BUF_LEN ], buf2[ BUF_LEN ];
     int
-        found_lower = 0, found_upper = 0, use_buf = 0;
+        found_lower = 0, found_upper = 0, used_malloc_m = 0, used_malloc_v = 0;
     long 
         i, len_loc;
     
@@ -128,18 +129,19 @@ void interp_sfc( long    len,
         }        
     }
 
-    use_buf = len <= BUF_LEN;
-    
-    if( use_buf )
+    if( !m_buf )
     {
-        ptm = ( double * ) m_buf;
-        ptv = ( double * ) v_buf;        
+        used_malloc_m = len > BUF_LEN;
+        m_buf = ( double * ) 
+            ( len <= BUF_LEN ? buf1 : malloc( len * sizeof( double )));        
     }
-    else
+    
+    if( !v_buf )
     {
-        ptm = ( double * ) malloc( len * sizeof( double ));
-        ptv = ( double * ) malloc( len * sizeof( double ));
-    }    
+        used_malloc_v = len > BUF_LEN;
+        v_buf = ( double * )
+            ( len <= BUF_LEN ? buf2 : malloc( len * sizeof( double )));
+    }
     
     if( found_lower )
     {
@@ -148,12 +150,12 @@ void interp_sfc( long    len,
         for( i = 0; i < len; ++i )
             if( ABS( t[ i ] - t1 ) < TOL )
             {
-                ptm[ len_loc ] = m[ i ];
-                ptv[ len_loc ] = v[ i ];
+                m_buf[ len_loc ] = m[ i ];
+                v_buf[ len_loc ] = v[ i ];
                 ++len_loc;                
             }            
 
-        interp_crv( len_loc, ptm, ptv, m0, &v1 );        
+        interp_crv( len_loc, m_buf, v_buf, m0, &v1 );        
     }
     
     if( found_upper )
@@ -163,12 +165,12 @@ void interp_sfc( long    len,
         for( i = 0; i < len; ++i )
             if( ABS( t[ i ] - t2 ) < TOL )
             {
-                ptm[ len_loc ] = m[ i ];
-                ptv[ len_loc ] = v[ i ];
+                m_buf[ len_loc ] = m[ i ];
+                v_buf[ len_loc ] = v[ i ];
                 ++len_loc;                
             }
         
-        interp_crv( len_loc, ptm, ptv, m0, &v2 );
+        interp_crv( len_loc, m_buf, v_buf, m0, &v2 );
     }
 
     if( !found_lower || ABS( t2 - t0 ) < TOL )
@@ -181,23 +183,25 @@ void interp_sfc( long    len,
         w2 = ( t0 - t1 ) / ( t2 - t1 );
         
         *v_out = w1 * v1 + w2 * v2;        
-    }
-    
+    }    
 
-    if( !use_buf )
-    {
-        free( ptm );
-        free( ptv );        
-    }
+    if( used_malloc_m )
+        free( m_buf );
     
+    if( used_malloc_v )
+        free( v_buf );    
 }
 
 
 SEXP R_interp_sfc( SEXP t_in, SEXP m_in, SEXP v_in, SEXP t_arg, SEXP m_arg )
 {
     long arg_len = length( m_arg ), len_in = length( m_in ), i;
+    double *m_buf, *v_buf;    
     SEXP v_out = NEW_NUMERIC( arg_len );
     PROTECT( v_out );
+
+    m_buf = ( double * ) malloc( len_in * sizeof( double ));
+    v_buf = ( double * ) malloc( len_in * sizeof( double ));    
 
     for( i = 0; i < arg_len; ++i )
         interp_sfc( len_in,
@@ -206,8 +210,13 @@ SEXP R_interp_sfc( SEXP t_in, SEXP m_in, SEXP v_in, SEXP t_arg, SEXP m_arg )
                     REAL( v_in ),
                     REAL( t_arg )[ i ],
                     REAL( m_arg )[ i ],
-                    REAL( v_out ) + i );
-    
+                    REAL( v_out ) + i,
+                    m_buf,
+                    v_buf );
+
+    free( m_buf );        
+    free( v_buf );    
+
     UNPROTECT( 1 );
 
     return v_out;    
