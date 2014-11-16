@@ -1,4 +1,20 @@
 
+library( uri )
+
+vsf = data.frame(
+    t = c( 1, 1, 1, 2, 2, 2 ),
+    m = c( .5, 1, 1.5, .5, 1, 1.5 ),
+    v = c( .6, .4, .2, .5, .45, .4 ))
+
+fun1 = function( t, m ) interp.sfc( vsf$t, vsf$m, vsf$v, t, m )
+
+t2   = 10:20/10
+m2   = 5:15/10
+vsf2 = matrix( NA, length( t2 ), length( m2 ))
+
+for( i in 1:length( t2 ))
+    vsf2[ i, ] = fun1( t2[ i ], m2 )
+
 x = as.data.frame(matrix(rnorm(20),10,2))
 
 write.table(x,"tmp.txt",quote=F,row.names=F,col.names=T)
