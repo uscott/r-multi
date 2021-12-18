@@ -10,6 +10,7 @@
 #include <R.h>
 #include <Rdefines.h>
 #include <Rmath.h>
+#include <ctype.h>
 #include <math.h>
 #include <string.h>
 #include "nrutil2.h"
