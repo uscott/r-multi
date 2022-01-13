@@ -15,9 +15,8 @@
 #include <string.h>
 #include "nrutil2.h"
 
-typedef double (*OptimFunc)( double *, long, void * );
-typedef double (*optimFun)( SEXP, SEXP );
-
+typedef double ( *OptimFunc )( double *, long, void * );
+typedef double ( *optimFun )( SEXP, SEXP );
 
 static const size_t DSIZE = sizeof(double);
 
@@ -27,6 +26,10 @@ static const size_t DSIZE = sizeof(double);
 
 #define isPosInf(x)     (R_PosInf == (x))
 #define isNegInf(x)     (R_NegInf == (x))
+#define IsPosInf isPosInf
+#define IsNegInf isNegInf
+#define IS_POS_INF isPosInf
+#define IS_NEG_INF isNegInf
 #define CHAR_PTR(x)     CHARACTER_POINTER(x)
 #define AS_CHAR(x)      AS_CHARACTER(x)
 #define SQR(x)          ((x) * (x))
@@ -35,24 +38,24 @@ static const size_t DSIZE = sizeof(double);
 #define MAX(x, y)       ((x) > (y) ?   (x) : (y))
 #define SIGN_OF(x)      ((x) >   0 ?     1 : ((x) < 0 ? -1 : 0))
 GLOBAL long lmaxarg1, lmaxarg2;
-#define LMAX(a,b) ((lmaxarg1=(long)(a)) > (lmaxarg2=(long)(b)) ? lmaxarg1 : lmaxarg2)
+#define LMAX(a,b) (( lmaxarg1 = (long)(a) ) > ( lmaxarg2 = (long)(b) ) ? lmaxarg1 : lmaxarg2 )
 GLOBAL long lminarg1, lminarg2;
-#define LMIN(a,b) ((lminarg1=(a)) < (lminarg2=(b)) ? lminarg1 : lminarg2)
+#define LMIN(a,b) (( lminarg1 = (long)(a)) < ( lminarg2 = (long)(b) ) ? lminarg1 : lminarg2 )
 GLOBAL int iminarg1, iminarg2;
-#define IMIN(a,b) ((iminarg1=(int)(a)) < (iminarg2=(int)(b)) ? iminarg1 : iminarg2)
+#define IMIN(a,b) (( iminarg1 = (int)(a)) < ( iminarg2 = (int)(b) ) ? iminarg1 : iminarg2 )
 GLOBAL double dmaxarg1, dmaxarg2;
-#define DMAX(a,b) ((dmaxarg1=(double)(a)) > (dmaxarg2=(double)(b)) ? dmaxarg1 : dmaxarg2)
+#define DMAX(a,b) (( dmaxarg1 = (double)(a)) > ( dmaxarg2 = (double)(b) ) ? dmaxarg1 : dmaxarg2 )
 GLOBAL double dsqrarg;
-#define DSQR(a) ((dsqrarg = (double)(a)) == 0.0 ? 0.0 : dsqrarg * dsqrarg)
+#define DSQR(a) (( dsqrarg = (double)(a)) == 0.0 ? 0.0 : dsqrarg * dsqrarg )
 GLOBAL double dabsarg;
-#define DABS(x) ((dabsarg=(double)(x))>=0.0 ? dabsarg : -dabsarg)
+#define DABS(x) (( dabsarg = (double)(x)) >= 0.0 ? dabsarg : -dabsarg )
 GLOBAL double dsignarg;
 #define DSIGN(x) ((dsignarg=(double)(x)) > 0.0 ? 1.0 : (dsignarg < 0.0 ? -1.0 : 0.0))
 GLOBAL double lsignarg;
 #define LSIGN(x) ((lsignarg=(long)(x)) > 0? 1 : (lsignarg < 0 ? -1 : 0))
 
-#define NORM_DIST(x) pnorm(x,0,1,1,0)
-#define NORM_DENS(x) dnorm(x,0,1,0)
+#define NORM_DIST(x) pnorm( x, 0, 1, 1, 0 )
+#define NORM_DENS(x) dnorm( x, 0, 1, 0 )
 
 GLOBAL SEXP *ensSxpPtr;
 GLOBAL long ensLenArg;
@@ -86,7 +89,7 @@ GLOBAL long ensLenArg;
 
 #ifndef HUGE
 #define HUGE            (1e100)
-#endif 
+#endif
 
 #define HUGE_NEGATIVE   (-HUGE)
 #define BS_PTR_LEN 3
@@ -214,12 +217,19 @@ void transpose_matrix_ow(carray a);
 void matrix_prod(carray mat1, carray mat2, int trans1, int trans2, carray ans);
 void matrix_prod_ns(carray mat1, carray mat2, int trans1, int trans2, carray ans);
 carray matrix_prod_b(carray mat1, carray mat2, int trans1, int trans2);
-void matrix_prod_3(carray mat1, carray mat2, carray mat3, 
-                   int trans1, int trans2, int trans3, carray ans);
-carray matrix_prod_3b(carray mat1, carray mat2, carray mat3,
-                      int trans1, int trans2, int trans3);
-void matrix_prod_4(carray mat1, carray mat2, carray mat3, carray mat4,
-                   int trans1, int trans2, int trans3, int trans4, carray ans);
+void matrix_prod_3(
+	carray mat1, carray mat2, carray mat3,
+    int trans1, int trans2, int trans3,
+	carray ans
+);
+carray matrix_prod_3b(
+	carray mat1, carray mat2, carray mat3, int trans1, int trans2, int trans3
+);
+void matrix_prod_4(
+	carray mat1, carray mat2, carray mat3, carray mat4,
+	int trans1, int trans2, int trans3, int trans4,
+	carray ans
+);
 void matrix_prod_n(carray *mat, int *trans_ptr, int length, carray ans);
 void matrix_ptr_prod(carray *mat, int *trans_ptr, int length, carray ans);
 int matrix_inverse(carray a, carray ainverse);
@@ -231,86 +241,128 @@ double sumsq(carray);
 double det(carray);
 carray sexp_to_carray(SEXP, int);
 SEXP carray_to_sexp(carray);
-void delta_to_strike(const int *n, const double *T, const double *S, 
-                     const double *vol, const double *del, 
+void delta_to_strike(const int *n, const double *T, const double *S,
+                     const double *vol, const double *del,
                      const char  **opt, const double *r, double *q, double *ans);
 SEXP bvt_normuri(SEXP n, SEXP rho, SEXP jiggle);
 SEXP simulate_garch1(SEXP coefs, SEXP days, SEXP r0, SEXP h0);
 SEXP roll_apply(SEXP x, const SEXP fn, const SEXP order, const SEXP env);
-void bs0(const double T, const double S, const double K, 
-         const double vol, const double r, const double q,   
-         char opt, char ret, double *ans);
+void bs_value(
+	const double T, const double S, const double K,
+	const double vol, const double r, const double q,
+	char opt, char ret, double *ans
+);
 SEXP deltaToStrike(SEXP T, SEXP S, SEXP vol, SEXP del, SEXP optionType, SEXP r, SEXP q);
 SEXP bs(SEXP tau, SEXP S, SEXP K, SEXP vol, SEXP r, SEXP q, SEXP opt, SEXP ret);
+double bs_price(
+	double T,
+	double S,
+	double K,
+	double vol,
+	double q,
+	double r,
+	char o
+);
+int bs_price_chkargs(
+	const double T,
+	const double S,
+	const double K,
+	const double vol,
+	const double r,
+	const double q
+);
 SEXP maxDrawdown(SEXP x, SEXP incremental);
-SEXP bsDeltaHedge1(SEXP T, SEXP S, SEXP K, SEXP vol, SEXP posn, SEXP r,
-                   SEXP q, SEXP hedgePeriod, SEXP optionTypes, SEXP transCosts, SEXP reltc);
-SEXP bsDeltaHedge2(SEXP tau, SEXP S, SEXP K, SEXP vol, SEXP posn, SEXP r, 
-                   SEXP q, SEXP hedgePeriod, SEXP optionTypes, SEXP transCosts,
-                   SEXP reltc, SEXP returnDaily);
-SEXP bsDeltaHedge3(SEXP tau, SEXP S, SEXP K, 
-                   SEXP vol, SEXP posn, SEXP r,
-                   SEXP q, SEXP hedgePeriod, SEXP optionTypes,
-                   SEXP transCosts, SEXP reltc, 
-                   SEXP returnDaily);
-SEXP dvHedge2(SEXP posn, SEXP posnStrikes, SEXP optionTypes,
-              SEXP hedgePeriod, SEXP T, SEXP S, SEXP vols, 
-              SEXP volStrikes, SEXP r, SEXP q, 
-              SEXP undTransCosts, SEXP optTransCosts, 
-              SEXP isRelUndCosts, SEXP isRelOptCosts);
-SEXP dvHedge(SEXP posn, SEXP posnStrikes, SEXP optionTypes,
-             SEXP hedgePeriod, SEXP T, SEXP S, SEXP vols, 
-             SEXP volStrikes, SEXP r, SEXP q, 
-             SEXP undTransCosts, 
-             SEXP optTransCosts, SEXP isRelUndCosts, 
-             SEXP isRelOptCosts);
-SEXP sprdOptDh1(SEXP T, SEXP S1, SEXP S2, 
-                SEXP K, SEXP vol1, SEXP vol2,
-                SEXP rho, SEXP r, SEXP q1,
-                SEXP q2, SEXP opt, SEXP grdPts);
+SEXP bsDeltaHedge1(
+	SEXP T, SEXP S, SEXP K, SEXP vol, SEXP posn, SEXP r,
+	SEXP q, SEXP hedgePeriod, SEXP optionTypes, SEXP transCosts, SEXP reltc
+);
+SEXP bsDeltaHedge2(
+	SEXP tau, SEXP S, SEXP K, SEXP vol, SEXP posn, SEXP r,
+	SEXP q, SEXP hedgePeriod, SEXP optionTypes, SEXP transCosts,
+	SEXP reltc, SEXP returnDaily
+);
+SEXP bsDeltaHedge3(
+	SEXP tau, SEXP S, SEXP K, SEXP vol, SEXP posn, SEXP r,
+	SEXP q, SEXP hedgePeriod, SEXP optionTypes,
+	SEXP transCosts, SEXP reltc, SEXP returnDaily
+);
+SEXP dvHedge2(
+	SEXP posn, SEXP posnStrikes, SEXP optionTypes,
+	SEXP hedgePeriod, SEXP T, SEXP S, SEXP vols,
+	SEXP volStrikes, SEXP r, SEXP q, SEXP undTransCosts, SEXP optTransCosts,
+	SEXP isRelUndCosts, SEXP isRelOptCosts);
+SEXP dvHedge(
+	SEXP posn, SEXP posnStrikes, SEXP optionTypes,
+	SEXP hedgePeriod,
+	SEXP T, SEXP S, SEXP vols, SEXP volStrikes, SEXP r, SEXP q,
+	SEXP undTransCosts,
+	SEXP optTransCosts, SEXP isRelUndCosts, SEXP isRelOptCosts
+);
+SEXP sprdOptDh1(
+	SEXP T, SEXP S1, SEXP S2,
+	SEXP K, SEXP vol1, SEXP vol2,
+	SEXP rho, SEXP r, SEXP q1,
+	SEXP q2, SEXP opt, SEXP grdPts);
 void gls_sumsq1(int T, int n, int p, double *y, double **X,
                 double *beta, double *phi, double *sumsq, double *res);
 SEXP gls_sumsq2(SEXP y, SEXP X, SEXP beta, SEXP phi);
-void margrabe0(const double T, const double S1, 
-               const double S2, const double vol1, const double vol2,
-               const double rho, const double r, const double q1,   
-               const double q2, const char opt, double *ans);
-SEXP margrabe(SEXP tau, SEXP S1, SEXP S2,
-              SEXP vol1, SEXP vol2, SEXP rho,
-              SEXP r, SEXP q1, SEXP q2,
-              SEXP opt);
-SEXP margrabe2(SEXP tau, 
-               SEXP S1, SEXP S2, SEXP K,
-               SEXP vol1, SEXP vol2, SEXP rho,
-               SEXP r, SEXP q1, SEXP q2,
-               SEXP opt, SEXP npaths, SEXP eps);
-void pearson0(double tau, double S1, double S2, double K, 
-              double vol1, double vol2, double rho, 
-              double r, double q1, double q2, 
-              char optionType, long nGrdPts, int calcDeltas,
-              double *valG);
-SEXP pearson(SEXP tau, 
-             SEXP S1, SEXP S2, SEXP K,
-             SEXP vol1, SEXP vol2, SEXP rho,
-             SEXP r, SEXP q1, SEXP q2,
-             SEXP opt, SEXP calcDeltas, SEXP grdPts);
-SEXP optimGradient3(optimFun f, SEXP initPar, SEXP controlPar,
-                    const double tol, const int relTol, 
-                    const int minimize, const long maxit);
-SEXP optimGa3(optimFun f, SEXP initPar, SEXP controlPar, SEXP parType,
-              const int parLen, const int basePopSize, const long minit,
-              const long stopLag, const long maxit, const int minimize, 
-              const double tol, const int relTol);
+void margrabe0(
+	const double T, const double S1,
+	const double S2, const double vol1, const double vol2,
+	const double rho, const double r, const double q1,
+	const double q2, const char opt, double *ans
+);
+SEXP margrabe(
+	SEXP tau, SEXP S1, SEXP S2,
+	SEXP vol1, SEXP vol2, SEXP rho,
+	SEXP r, SEXP q1, SEXP q2,
+	SEXP opt
+);
+SEXP margrabe2(
+	SEXP tau,
+	SEXP S1, SEXP S2, SEXP K,
+	SEXP vol1, SEXP vol2, SEXP rho,
+	SEXP r, SEXP q1, SEXP q2,
+	SEXP opt, SEXP npaths, SEXP eps
+);
+void pearson0(
+	double tau, double S1, double S2, double K,
+	double vol1, double vol2, double rho,
+	double r, double q1, double q2,
+	char optionType, long nGrdPts, int calcDeltas,
+	double *valG
+);
+SEXP pearson(
+	SEXP tau,
+	SEXP S1, SEXP S2, SEXP K,
+	SEXP vol1, SEXP vol2, SEXP rho,
+	SEXP r, SEXP q1, SEXP q2,
+	SEXP opt, SEXP calcDeltas, SEXP grdPts
+);
+SEXP optimGradient3(
+	optimFun f, SEXP initPar, SEXP controlPar,
+	const double tol, const int relTol,
+	const int minimize, const long maxit
+);
+SEXP optimGa3(
+	optimFun f, SEXP initPar, SEXP controlPar, SEXP parType,
+	const int parLen, const int basePopSize, const long minit,
+	const long stopLag, const long maxit, const int minimize,
+	const double tol, const int relTol
+);
 SEXP optim_gradient1(SEXP, SEXP, SEXP, SEXP, SEXP maxit, SEXP env);
-SEXP optim_ga1(SEXP par, SEXP fn, SEXP gens, 
-               SEXP minimize, SEXP tol, SEXP env);
+SEXP optim_ga1(
+	SEXP par, SEXP fn, SEXP gens, SEXP minimize, SEXP tol, SEXP env
+);
 SEXP optimGradient2(optimFun f, SEXP initPar, SEXP controlPar,
-                    const double tol, const int relTol, 
+                    const double tol, const int relTol,
                     const int minimize, const long maxit);
-SEXP optimGa2(optimFun f, SEXP initPar, SEXP controlPar,
-              const int parLen, const int basePopSize, 
-              const long stopLags, const long minit, const long maxit, 
-              const int minimize, const double tol, const int relTol);
+SEXP optimGa2(
+	optimFun f, SEXP initPar, SEXP controlPar,
+	const int parLen, const int basePopSize,
+	const long stopLags, const long minit, const long maxit,
+	const int minimize, const double tol, const int relTol
+);
 SEXP asRealMatrix(SEXP x);
 double dmean(const double *x, long n);
 double dvar(const double *x, long n);
@@ -371,8 +423,10 @@ SEXP vector_norm( SEXP x );
 SEXP unit_vector( SEXP x );
 SEXP feval( SEXP par, SEXP fn, SEXP env );
 SEXP getListElt( SEXP list, const char *str );
-SEXP kalman1(SEXP yr, SEXP Hr_tr, SEXP Fr, SEXP Qr, 
-             SEXP Rr, SEXP xr, SEXP Ar_tr);
+SEXP kalman1(
+	SEXP yr, SEXP Hr_tr, SEXP Fr, SEXP Qr,
+    SEXP Rr, SEXP xr, SEXP Ar_tr
+);
 SEXP sortedUniqueInteger(SEXP t);
 int iEltOf(long val, SEXP t, long *index);
 void sortWithIndex2(double *x, double *y, long n);
@@ -389,4 +443,5 @@ SEXP cum_var(SEXP x, SEXP reverse);
 void drev(long len, const double *in, double *out);
 void dmult(long len, const double *in1, const double *in2, double *out);
 SEXP cum_corr(SEXP x, SEXP y, SEXP reverse);
+
 #endif /* URI_H */
