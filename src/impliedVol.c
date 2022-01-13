@@ -12,13 +12,9 @@
 /**********************************************************************/
 
 
-static double bserr( const double T, const double S,
-                     const double K, const double vol, const double r, 
-                     const double q, const char   opt, const double mprice)
-
 /*******************************************************************
    *
-   *  Description: Computes the BS options price x for the 
+   *  Description: Computes the BS options price x for the
    *    given parameters T, S, K, vol, r, q, opt and returns
    *    log(x / mprice).
    *
@@ -27,25 +23,29 @@ static double bserr( const double T, const double S,
    *
    *******************************************************************/
 
+static double bserr(
+	const double T, const double S,
+	const double K, const double vol, const double r,
+	const double q, const char   opt, const double mprice
+)
 {
-    double bsval;
-
-    bs0( T, S, K, vol, r, q, opt, 'p', &bsval );
-
+    double bsval = bs_price( T, S, K, vol, q, r, opt);
     return log( bsval / mprice );
 }
 
 
-static void impvol0( const double T, 
-                     const double S, 
-                     const double K, 
-                     const double mprice, 
-                     const double r, 
-                     const double q, 
-                     const char   optype, 
-                     const double tol, 
-                     int          maxit, 
-                     double      *iv)
+static void impvol0(
+	const double T,
+	const double S,
+	const double K,
+	const double mprice,
+	const double r,
+	const double q,
+	const char   optype,
+	const double tol,
+	int          maxit,
+	double      *iv
+)
 
   /*******************************************************************
    *
@@ -57,9 +57,9 @@ static void impvol0( const double T,
    *
    *******************************************************************/
 {
-    int 
+    int
         it = 0, ok;
-    double 
+    double
         lower, upper, err, err_l, err_u, errA, errB,
         bnd_lower = 0.0, bnd_upper = 0.0;
 
@@ -67,7 +67,7 @@ static void impvol0( const double T,
         error ("Null pointer passed where not allowed");
 
     /* Get lower and upper arbitrage bounds for the price */
-    switch(optype) 
+    switch(optype)
     {
         case 'c':
             bnd_lower = MAX( exp( -q * T ) * S - exp( -r * T ) * K, 0 );
@@ -80,7 +80,7 @@ static void impvol0( const double T,
             break;
 
         case 's':
-            bnd_lower = 
+            bnd_lower =
                 MAX( exp( -q * T ) * S - exp( -r * T ) * K, 0) +
                 MAX( exp( -r * T ) * K - exp( -q * T ) * S, 0);
             bnd_upper = S + K;
@@ -90,7 +90,7 @@ static void impvol0( const double T,
             break;
     }
 
-    if( bnd_lower >= mprice || mprice >= bnd_upper ) 
+    if( bnd_lower >= mprice || mprice >= bnd_upper )
     {
         *iv = NA_REAL;
         return;
@@ -99,8 +99,8 @@ static void impvol0( const double T,
     maxit = MAX( maxit, 20 );
     lower = 1.0;
     it    = 0;
-  
-    do 
+
+    do
     {
         lower *= 0.5;
         it    += 1;
@@ -111,25 +111,25 @@ static void impvol0( const double T,
     it    = 0;
     upper = 0.5;
 
-    do 
+    do
     {
         upper *= 2.0;
         it    += 1;
         err_u  = bserr( T, S, K, upper, r, q, optype, mprice );
 
     } while (it < maxit && err_u < 0);
-  
+
     if      ( 0 == err_l )
         *iv = lower;
     else if ( 0 == err_u)
         *iv = upper;
     else if ( err_l > 0 || err_u < 0 )
         *iv = NA_REAL;
-    else 
+    else
     {
         it = 0;
 
-        do 
+        do
         {
             *iv  = 0.5 * ( lower + upper );
             err  = bserr( T, S, K, *iv, r, q, optype, mprice );
@@ -156,7 +156,7 @@ static void impvol0( const double T,
 
 
 #define N_NUMERIC_ARGS 6
-static void imp_vol_chkargs( SEXP *tau, SEXP *S, SEXP *K, SEXP *mprice, 
+static void imp_vol_chkargs( SEXP *tau, SEXP *S, SEXP *K, SEXP *mprice,
                              SEXP *r, SEXP *q, SEXP *op_type,
                              int  *numprot)
 {
@@ -164,7 +164,7 @@ static void imp_vol_chkargs( SEXP *tau, SEXP *S, SEXP *K, SEXP *mprice,
 
     SEXP *args[]  = { tau, S, K, mprice, r, q, op_type };
     char *names[] = { "tau", "S", "K", "mprice", "r", "q", "op_type" };
-  
+
     /* Coerce types  */
     for ( i = 0; i < N_NUMERIC_ARGS; i++ )
         PROT2( *args[i] = AS_NUMERIC(*args[i]), *numprot );
@@ -173,7 +173,7 @@ static void imp_vol_chkargs( SEXP *tau, SEXP *S, SEXP *K, SEXP *mprice,
     for( i = 0, N = 0; i < N_NUMERIC_ARGS + 1; i++ )
         N = MAX( N, length( *args[ i ] ));
 
-    if( N > 1 ) 
+    if( N > 1 )
     { /* Repeat arguments of length == 1. */
 
         for ( i = 0; i < N_NUMERIC_ARGS; i++)
@@ -194,50 +194,48 @@ static void imp_vol_chkargs( SEXP *tau, SEXP *S, SEXP *K, SEXP *mprice,
 
 
 
-SEXP imp_vol(SEXP tau, SEXP S, SEXP K, 
+SEXP imp_vol(SEXP tau, SEXP S, SEXP K,
              SEXP mprice, SEXP r, SEXP q,
              SEXP op_type, SEXP tol, SEXP maxit)
 
   /*******************************************************************
    *
    *  Description: Computes the implied BS volatility of an option.
-   *    
+   *
    *  Caution: Assumes tau is in days.
    *
    *******************************************************************/
 
-{  
+{
     SEXP ans;
-  
+
     int N, i;
     int numprot = 0;
 
     imp_vol_chkargs( &tau, &S, &K, &mprice, &r, &q, &op_type, &numprot );
-  
+
     /* By now tau, S, K, mprice, r, q, op_type should all have same length */
 
-    N = length( tau ); 
+    N = length( tau );
 
     PROT2( ans = NEW_NUMERIC( N ), numprot );
 
-    for( i = 0; i < N; ++i ) 
+    for( i = 0; i < N; ++i )
     {
-        impvol0( REAL( tau )[ i ] / 365.0, 
-                 REAL( S )[ i ], 
-                 REAL( K )[ i ], 
+        impvol0( REAL( tau )[ i ] / 365.0,
+                 REAL( S )[ i ],
+                 REAL( K )[ i ],
                  REAL( mprice )[ i ],
-                 REAL( r )[ i ], 
-                 REAL( q )[ i ], 
+                 REAL( r )[ i ],
+                 REAL( q )[ i ],
                  *CHAR( STRING_ELT( op_type, i )),
-                 asReal( tol ), 
-                 asInteger( maxit ), 
+                 asReal( tol ),
+                 asInteger( maxit ),
                  REAL( ans ) + i );
 
     }
-   
+
     UNPROTECT( numprot );
 
     return ans;
 }
-
-
