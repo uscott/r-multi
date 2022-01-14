@@ -113,7 +113,7 @@ static double zero_spot_theta( double T, double K, double r, char o )
 
 static double zero_strike_delta( double T, double q, char opt )
 {
-	switch ( opt)
+	switch ( opt )
 	{
 	case 'p':
 		return 0;
@@ -215,6 +215,13 @@ double zero_vol_theta( double T, double S, double K, double r, double q, char o 
 }
 
 
+/*******************************************************************
+ *
+ *  Description: Computes the BS price, delta or vega and sets *ans to it.
+ *
+ *  Assumes T is given in *years* (or whatever time units vol, r and q are given in).
+ *
+ *******************************************************************/
 
 void bs_value(
 	const double T,
@@ -227,13 +234,6 @@ void bs_value(
 	char ret,
 	double *ans
 )
-/*******************************************************************
- *
- *  Description: Computes the BS price, delta or vega and sets *ans to it.
- *
- *  Assumes T is given in *years* (or whatever time units vol, r and q are given in).
- *
- *******************************************************************/
 {
     int ok;
     double d1, d2;
@@ -331,6 +331,11 @@ double bs_price(
 	char o
 )
 {
+	if ( vol < 0 )
+	{
+		
+	}
+
 	if ( T == 0 || vol == 0 )
 		return intrinsic( T, S, K, r, q, o );
 
@@ -348,7 +353,17 @@ double bs_price(
 
 	double val =  S * NORM_DIST( d1 ) - K * NORM_DIST( d2 );
 
-	return val;
+	switch ( o )
+	{
+	case 'c':
+		return val;
+	case 'p':
+		return val + K - S;
+	case 's':
+		return 2 * val + K - S;
+	}
+
+	return NA_REAL;
 }
 
 
@@ -408,23 +423,30 @@ double bs_theta( double T, double S, double K, double vol, double r, double q, c
 	S *= exp( -q * T );
 	K *= exp( -r * T );
 
-	double theta;
+	double theta = -S * NORM_DENS( d1 ) * vol / 2 / sqrt( T );
 
 	switch ( o )
 	{
 	case 'c':
-		theta = -S * NORM_DENS( d1 ) * vol / 2 / sqrt( T );
 		theta -= r * K * NORM_DIST( d2 );
 		theta += q * S * NORM_DIST( d1 );
-		return theta;
+		break;
 	case 'p':
-		return NA_REAL;
+		theta += r * K * NORM_DIST( -d2 );
+		theta -= q * S * NORM_DIST( -d1 );
+		break;
 	case 's':
+		theta *= 2;
+		theta -= r * K * NORM_DIST( d2 );
+		theta += q * S * NORM_DIST( d1 );
+		theta += r * K * NORM_DIST( -d2 );
+		theta -= q * S * NORM_DIST( -d1 );
+		break;
+	default:
 		return NA_REAL;
 	}
 
-
-	return NA_REAL;
+	return theta;
 }
 
 
