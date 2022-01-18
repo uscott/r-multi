@@ -3,3 +3,4 @@
 *.so
 *.gz
 .vscode/**
+*.code-workspace
