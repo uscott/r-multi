@@ -58,11 +58,14 @@ static double intrinsic( double T, double S, double K, double r, double q, char 
 	switch ( o )
 	{
 	case 'c':
-		return MAX( 0, +p);
+		return MAX( 0, +p );
 	case 'p':
-		return MAX( 0, -p);
+		return MAX( 0, -p );
+	case 's':
+		return ABS( p );
 	}
-	return ABS( p );
+
+	return NA_REAL;
 }
 
 
@@ -158,19 +161,18 @@ double zero_strike_theta( double T, double S, double q, char o )
 
 static double zero_vol_delta( double T, double S, double K, double r, double q, char opt )
 {
-	double dfq;
-	dfq = exp( -q * T );
-	S *= dfq;
+	double a = exp( -q * T );
+	S *= a;
 	K *= exp( -r * T );
 
 	switch ( opt )
 	{
 	case 'c':
-		return S < K ? 0 : dfq;
+		return S < K ? 0 : a;
 	case 'p':
-		return S < K ? -dfq : 0;
+		return S < K ? -a: 0;
 	case 's':
-		return S < K ? -dfq : dfq;
+		return S < K ? -a: a;
 	}
 
 	return NA_REAL;
@@ -244,96 +246,50 @@ void bs_value(
     if ( ans == NULL )
         error ( "null pointer passed" );
 
-    *ans = NA_REAL;
-
 	if ( bs_price_chkargs( T, S, K, vol, r, q ))
-		return;
-
-	get_d1_and_d2( T, S, K, vol, r, q, &d1, &d2 );
-
-	if ( ret == 'p' )
 	{
-		if ( T > 0 )
-		{
-
-		}
+		*ans = NA_REAL;
+		return;
 	}
+
     switch ( ret )
     {
-        case 'p':
-
-            if( 0.0 < T )
-                *ans = exp(-q * T)* S * NORM_DIST( d1 ) - exp( -r * T)* K * NORM_DIST( d2 );
-            else
-                *ans = DMAX( S - K, 0 );
-
-            if( opt == 'p' )
-                *ans -= exp( -q * T ) * S - exp( -r * T ) * K;
-            else if( opt == 's' )
-            {
-                *ans *= 2.0;
-                *ans -= exp( -q * T ) * S - exp( -r * T ) * K;
-            }
-            break;
-
-        case 'd':
-            if( 0.0 < T )
-                *ans = exp( -q * T ) * NORM_DIST( d1 );
-            else
-                *ans = ( S > K ? 1.0 : 0.0 );
-
-            if( opt == 'p' )
-                *ans -= exp( -q * T );
-            else if( opt == 's' )
-            {
-                *ans *= 2.0;
-                *ans -= exp( -q * T );
-            }
-            break;
-
-        case 'v':
-
-            if( 0.0 < T )
-                *ans = exp( -q * T )* S * sqrt( T ) * NORM_DENS( d1 );
-            else
-                *ans = 0.0;
-
-            if( opt == 's' )
-                *ans *= 2.0;
-
-            break;
-
-        case 'g':
-
-            if( 0.0 < T )
-                *ans = exp( -q * T ) * NORM_DENS( d1 ) / (S*vol*sqrt(T));
-            else
-                *ans = S == K ? R_PosInf : 0.0;
-
-            if( opt == 's' )
-                *ans *= 2.0;
-			break;
-
-        default:
-            *ans = NA_REAL;
-            break;
+    case 'p':
+		*ans = bs_price( T, S, K, vol, q, r, opt );
+		break;
+    case 'd':
+		*ans = bs_delta( T, S, K, vol, r, q, opt );
+		break;
+    case 'g':
+		*ans = bs_gamma( T, S, K, vol, r, q, opt );
+		break;
+	case 't':
+		*ans = bs_theta( T, S, K, vol, r, q, opt );
+		break;
+    case 'v':
+		*ans = bs_vega( T, S, K, vol, r, q, opt );
+		break;
+    default:
+        *ans = NA_REAL;
+		break;
     }
 }
 
 
 double bs_price(
-	double T,
-	double S,
-	double K,
-	double vol,
-	double q,
-	double r,
-	char o
+	double T, double S, double K, double vol, double r, double q, char o
 )
 {
+	if ( bs_price_chkargs( T, S, K, vol, r, q))
+		return NA_REAL;
+
+	double val;
+
 	if ( vol < 0 )
 	{
-		
+		val = bs_price( T, S, K, -vol, q, r, o);
+		val = 2 * intrinsic( T, S, K, r, q, 0) - val;
+		return val;
 	}
 
 	if ( T == 0 || vol == 0 )
@@ -351,7 +307,7 @@ double bs_price(
 	S *= exp( -q * T );
 	K *= exp( -r * T );
 
-	double val =  S * NORM_DIST( d1 ) - K * NORM_DIST( d2 );
+	val =  S * NORM_DIST( d1 ) - K * NORM_DIST( d2 );
 
 	switch ( o )
 	{
@@ -376,7 +332,7 @@ int bs_price_chkargs(
 	const double q
 )
 {
-	return ( S < 0 || K < 0 || !R_FINITE( q ) || vol < 0 || !R_FINITE( T ) || !R_FINITE( K )
+	return ( S < 0 || K < 0 || !R_FINITE( q ) || !R_FINITE( T ) || !R_FINITE( K )
 			|| !R_FINITE( vol ) || !R_FINITE( r ) || T < 0.0 );
 }
 
