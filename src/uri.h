@@ -254,15 +254,6 @@ void bs_value(
 );
 SEXP deltaToStrike(SEXP T, SEXP S, SEXP vol, SEXP del, SEXP optionType, SEXP r, SEXP q);
 SEXP bs(SEXP tau, SEXP S, SEXP K, SEXP vol, SEXP r, SEXP q, SEXP opt, SEXP ret);
-double bs_price(
-	double T,
-	double S,
-	double K,
-	double vol,
-	double q,
-	double r,
-	char o
-);
 int bs_price_chkargs(
 	const double T,
 	const double S,
@@ -271,6 +262,11 @@ int bs_price_chkargs(
 	const double r,
 	const double q
 );
+double bs_price( double T, double S, double K, double vol, double r, double q, char o );
+double bs_delta( double T, double S, double K, double vol, double r, double q, char o );
+double bs_gamma( double T, double S, double K, double vol, double r, double q, char o );
+double bs_vega( double T, double S, double K, double vol, double r, double q, char o );
+double bs_theta( double T, double S, double K, double vol, double r, double q, char o );
 SEXP maxDrawdown(SEXP x, SEXP incremental);
 SEXP bsDeltaHedge1(
 	SEXP T, SEXP S, SEXP K, SEXP vol, SEXP posn, SEXP r,
