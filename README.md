@@ -13,3 +13,5 @@ or
 ```shell
 make build
 ```
+
+`make check` runs `R CMD check .`.
