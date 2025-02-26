@@ -1,4 +1,7 @@
-Package: uri
+Package: multi
 Version: 1.0
 Author: Uriel Scott <uriel.scott@protonmail.com>
 Maintainer: Uriel Scott <uriel.scott@protonmail.com>
+License: MIT
+Description: Multi-purpose
+Title: multi
