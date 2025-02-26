@@ -7,7 +7,7 @@ R 4.4
 
 ## Build
 ```shell
-R CMD build .
+R CMD build pkg
 ```
 or
 ```shell
