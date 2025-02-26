@@ -1,4 +1,4 @@
-useDynLib( uri )
+useDynLib( multi )
 
 # Import package dependencies
 

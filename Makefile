@@ -2,7 +2,7 @@ RCMD := R CMD
 
 .DEFAULT_GOAL := all
 
-all: clean build
+all: clean check build
 .PHONY: all
 
 build:
