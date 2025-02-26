@@ -16,6 +16,10 @@
 
 #include "nrutil2.h"
 
+#ifndef DOUBLE_EPS
+#define DOUBLE_EPS (2.2204460492503131e-16)
+#endif
+
 typedef double (*OptimFunc)(double *, long, void *);
 typedef double (*optimFun)(SEXP, SEXP);
 

@@ -215,9 +215,8 @@ SEXP bvt_normuri(SEXP n, SEXP rho, SEXP jiggle)
 }
 
 SEXP simulate_garch1(SEXP coefs, SEXP days, SEXP r0, SEXP h0)
-/* Last modified 22-Aug-2002. */
 {
-    int          conditional = !isNull(r0) & !isNull(h0);
+    int          conditional = !isNull(r0) && !isNull(h0);
     int          t;
     const int    T         = *INTEGER(days);
     double      *r         = NULL;

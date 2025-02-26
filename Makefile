@@ -15,6 +15,7 @@ check:
 
 clean:
 	rm -f *.tar.gz
+	rm -f src/*.o
 .PHONY: clean
 
 format:

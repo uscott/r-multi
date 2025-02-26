@@ -1,6 +1,6 @@
 
 
-#ifdef DUMBASS
+#ifdef NOT_NOW
 
 #include <R.h>
 #include <Rdefines.h>
