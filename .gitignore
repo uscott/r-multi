@@ -2,6 +2,7 @@
 symbols.rds
 
 *~
+
 *.o
 *.so
 *.gz
