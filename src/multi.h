@@ -1,5 +1,5 @@
-#ifndef URI_H_
-#define URI_H_
+#ifndef MULTI_H_
+#define MULTI_H_
 
 #ifdef I_AM_MAIN
 #define GLOBAL
@@ -405,4 +405,4 @@ void drev(long len, const double *in, double *out);
 void dmult(long len, const double *in1, const double *in2, double *out);
 SEXP cum_corr(SEXP x, SEXP y, SEXP reverse);
 
-#endif /* URI_H */
+#endif /* MULTI_H_ */

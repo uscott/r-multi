@@ -1,5 +1,5 @@
 
-#include "uri.h"
+#include "multi.h"
 
 static void makeCurve_chk(SEXP *xlist, SEXP *t, SEXP *mthNum, SEXPTYPE **types,
                           int *numprot)

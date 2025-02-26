@@ -4,7 +4,7 @@
 
 #include <time.h>
 
-#include "uri.h"
+#include "multi.h"
 
 #define THREE           3
 #define BIG_POP_SIZE(n) (2 * (n) + (2 * (n) - 1) * (n))
