@@ -1,4 +1,4 @@
-..Rcheck
+*.Rcheck
 symbols.rds
 
 *~

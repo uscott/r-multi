@@ -1,7 +1,7 @@
 Package: multi
-Version: 1.0
+Title: multi
+Description: Multi-purpose
 Author: Uriel Scott <uriel.scott@protonmail.com>
 Maintainer: Uriel Scott <uriel.scott@protonmail.com>
+Version: 0.1
 License: MIT
-Description: Multi-purpose
-Title: multi
