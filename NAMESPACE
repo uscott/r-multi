@@ -1,7 +1,6 @@
-useDynLib( uri )
+useDynLib( multi )
 
 # Import package dependencies
-
 
 # Export all names
 export( as.char )
