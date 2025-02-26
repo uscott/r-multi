@@ -1,6 +1,6 @@
 
 
-#ifdef U_R_GAY
+#ifdef TODO
 
 SEXP optim_ga_list(SEXP fn, SEXP init, SEXP maxit, SEXP minimize, SEXP tol,
                    SEXP env)

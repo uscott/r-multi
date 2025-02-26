@@ -1,37 +1,3 @@
-/*
- *  R : A Computer Language for Statistical Data Analysis
- *  Copyright (C) 2000-2003  The R Development Core Team.
- *
- *  This program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with this program; if not, write to the Free Software
- *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- *
- *
- *      Interfaces to POSIX date and time functions.
- */
-
-/*
-    These use POSIX functions that are not available on all platforms,
-    and where they are they may be partially or incorrectly implemented.
-    A number of lightweight alternatives are supplied, but generally
-    timezone support is only available if the OS supplies it.
-
-    A particular problem is the setting of the timezone TZ on Unix/Linux.
-    POSIX appears to require it, yet many Linux systems do not set it
-    and do not give the correct results/crash strftime if it is not set.
-    We use unsetenv() to work around this: that is a BSD construct but
-    seems to be available on the affected platforms.
- */
 
 #ifdef NOT_YET
 
