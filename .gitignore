@@ -1,4 +1,6 @@
 ..Rcheck
+symbols.rds
+
 *~
 *.o
 *.so
