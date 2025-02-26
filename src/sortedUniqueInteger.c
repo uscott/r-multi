@@ -1,5 +1,5 @@
 
-#include "uri.h"
+#include "multi.h"
 
 SEXP sortedUniqueInteger(SEXP t)
 {

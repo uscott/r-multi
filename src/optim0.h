@@ -1,7 +1,7 @@
 #ifndef _OPTIM0_H_
 #define _OPTIM0_H_
 
-#include "uri.h"
+#include "multi.h"
 
 SEXP OptimGa0(OptimFunc f, SEXP initPar, const long parlen, void *context,
               const int basePopSize, const long stopLags, const long minit,

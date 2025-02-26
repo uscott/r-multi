@@ -1,7 +1,7 @@
 
 #include <stdlib.h>
 
-#include "uri.h"
+#include "multi.h"
 
 #define MAX_NUM_OPTNS 100
 #define THREE         3

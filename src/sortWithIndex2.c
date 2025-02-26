@@ -1,5 +1,5 @@
 
-#include "uri.h"
+#include "multi.h"
 
 /* Sorts [x] and applies same permutation to [y] */
 void sortWithIndex2(double *x, double *y, long n)

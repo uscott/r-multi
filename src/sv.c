@@ -1,5 +1,5 @@
 
-#include "uri.h"
+#include "multi.h"
 
 #define STATE_LEN 9
 static void algo3_chk(SEXP *currentState, int *numprot)

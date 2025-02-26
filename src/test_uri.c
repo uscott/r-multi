@@ -7,7 +7,7 @@
 #include <Rmath.h>
 
 #ifndef URI_H_
-#include "uri.h"
+#include "multi.h"
 #endif
 
 SEXP test1_10(SEXP x)

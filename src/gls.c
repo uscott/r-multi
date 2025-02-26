@@ -1,5 +1,5 @@
 
-#include "uri.h"
+#include "multi.h"
 
 void gls_sumsq1(int T, int n, int p, double *y, double **X, double *beta,
                 double *phi, double *sumsq, double *res)

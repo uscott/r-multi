@@ -1,4 +1,4 @@
-#include "uri.h"
+#include "multi.h"
 
 void interp_crv(long len, double *x_in, double *y_in, double x0, double *y_out)
 {

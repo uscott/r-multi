@@ -1,7 +1,7 @@
 #include <assert.h>
 #include <time.h>
 
-#include "uri.h"
+#include "multi.h"
 
 SEXP asRealMatrix(SEXP x)
 {

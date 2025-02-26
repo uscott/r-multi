@@ -1,5 +1,5 @@
 
-#include "uri.h"
+#include "multi.h"
 
 static void cum_cov_chk(SEXP *x, SEXP *y, int *numprot)
 {
