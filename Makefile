@@ -16,3 +16,7 @@ check:
 clean:
 	rm -f *.tar.gz
 .PHONY: clean
+
+format:
+	clang-format -i src/*.c src/*.h
+.PHONY: format
